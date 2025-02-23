@@ -4,6 +4,12 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+def localProperties = new Properties()
+def localFile = rootProject.file("local.properties")
+if (localFile.exists()) {
+    localProperties.load(new FileInputStream(localFile))
+}
+
 android {
     namespace 'com.example.mockproject'
     compileSdk 35
@@ -14,7 +20,7 @@ android {
         targetSdk 35
         versionCode 1
         versionName "1.0"
-
+        buildConfigField "String", "API_KEY", "\"${localProperties.getProperty('API_KEY')}\""
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -61,4 +67,7 @@ dependencies {
     debugImplementation libs.androidx.ui.tooling
     debugImplementation libs.androidx.ui.test.manifest
     implementation "com.airbnb.android:lottie:3.4.0"
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.squareup.picasso:picasso:2.71828'
 }

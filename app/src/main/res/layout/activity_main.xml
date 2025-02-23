@@ -49,7 +49,7 @@
                 android:layout_width="25dp"
                 android:layout_height="25dp"
                 android:scaleType="fitCenter"
-                android:src="@drawable/icon_list"
+                android:src="@drawable/icon_grid"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:layout_marginEnd="16dp"
                 android:layout_gravity="end"/>

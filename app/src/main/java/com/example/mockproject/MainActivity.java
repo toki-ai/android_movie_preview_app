@@ -22,6 +22,12 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 public class MainActivity extends AppCompatActivity {
 
     private Fragment currentFragment;
+    private OnToolbarIconClickListener toolbarIconClickListener;
+    private boolean isGrid = false;
+
+    public void setToolbarIconClickListener(OnToolbarIconClickListener listener) {
+        this.toolbarIconClickListener = listener;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +42,14 @@ public class MainActivity extends AppCompatActivity {
         TextView toolbarTitle = findViewById(R.id.toolbar_title);
         ImageButton toolbarIconList = findViewById(R.id.toolbar_icon_list);
 
+        toolbarIconList.setOnClickListener(v -> {
+            if (toolbarIconClickListener != null) {
+                isGrid = !isGrid;
+                toolbarIconClickListener.onToolbarIconClick();
+                toolbarIconList.setImageResource(isGrid ? R.drawable.icon_list : R.drawable.icon_grid);
+            }
+        });
+
         currentFragment = new ListMoviesFragment();
         getSupportFragmentManager().beginTransaction()
                 .add(R.id.frame_container, currentFragment, "Movies")
@@ -49,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
             if (item.getItemId() == R.id.nav_home) {
                 selectedFragment = getOrCreateFragment(ListMoviesFragment.class, "Movies");
                 title = "Movies";
-                toolbarIconList.setImageResource(R.drawable.icon_list);
+                toolbarIconList.setImageResource(R.drawable.icon_grid);
             } else if (item.getItemId() == R.id.nav_favorite) {
                 selectedFragment = getOrCreateFragment(FavoriteFragment.class, "Favorites");
                 title = "Favorites";
