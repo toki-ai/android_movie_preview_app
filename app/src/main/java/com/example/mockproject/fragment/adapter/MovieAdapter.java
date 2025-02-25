@@ -55,7 +55,7 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
             holder.rating.setVisibility(View.VISIBLE);
             holder.overview.setVisibility(View.VISIBLE);
             holder.releaseDate.setVisibility(View.VISIBLE);
-            holder.ignoreChildIcon.setVisibility(movie.getIsAdultMoview() ? View.VISIBLE : View.GONE);
+            holder.ignoreChildIcon.setVisibility(movie.getIsAdultMovie() ? View.VISIBLE : View.GONE);
             holder.rating.setText(movie.getRating() +"/10.0");
             holder.overview.setText(movie.getOverview());
             holder.releaseDate.setText(movie.getReleaseDate());

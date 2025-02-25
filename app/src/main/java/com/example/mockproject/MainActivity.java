@@ -5,10 +5,12 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.view.Menu;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.RadioButton;
 import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -20,6 +22,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mockproject.fragment.AboutFragment;
 import com.example.mockproject.fragment.FavoriteFragment;
@@ -36,8 +39,6 @@ public class MainActivity extends AppCompatActivity {
     private boolean isGrid = false;
     private ImageButton toolbarIconList;
     private ImageView toolbarOptionsMenu;
-    //private ImageView profileAvatar, iconCake, iconMail, iconGender,
-    //private EditText profieName, profileBirthday, profileMail, genderMaul
     private SharedPreferences sharedPreferences;
     public static final String USER_ID = "user_id";
     public static final String SHARE_KEY = "mock_prj";
@@ -56,7 +57,6 @@ public class MainActivity extends AppCompatActivity {
         setUpToolbar();
         setUpOptionsMenu();
         setUpDrawer();
-        loadDrawerData();
         setUpBottomNavAndVisibleToolbar();
         setUpToolbarIconList();
     }
@@ -180,6 +180,19 @@ public class MainActivity extends AppCompatActivity {
         DrawerLayout drawerLayout = findViewById(R.id.drawer_layout);
         ImageButton btnToggle = findViewById(R.id.toolbar_icon_burger);
         NavigationView navigationView = findViewById(R.id.drawer_nav);
+
+        navigationView.removeHeaderView(navigationView.getHeaderView(0));
+        String userId = sharedPreferences.getString(USER_ID, "");
+        int headerLayout = userId.isEmpty() ? R.layout.header_drawer_profile : R.layout.header_drawer_guest;
+        View headerView = getLayoutInflater().inflate(headerLayout, navigationView, false);
+        navigationView.addHeaderView(headerView);
+
+        if (!userId.isEmpty()){
+            login();
+        }else{
+            loadDrawerData();
+        }
+
         btnToggle.setOnClickListener(view -> {
             if (drawerLayout.isDrawerOpen(navigationView)) {
                 drawerLayout.closeDrawer(navigationView);
@@ -189,9 +202,11 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void loadDrawerData(){
-        //ImageView avatar = findViewById()
+    private void login(){
 
+    }
+
+    private void loadDrawerData(){
         cameraLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
             if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                 Bitmap bitmap = (Bitmap) result.getData().getExtras().get("data");
@@ -217,12 +232,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void setProfileEditMode(boolean isEdit){
 
-    }
-
-    private void setProfileLoginMode(boolean isLogin){
-        if (isLogin){
-            
-        }
     }
 
 }

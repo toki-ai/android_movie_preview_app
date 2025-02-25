@@ -16,20 +16,18 @@
         android:layout_marginTop="50dp"
         android:clipToOutline="true"
         android:scaleType="centerCrop"
-        android:visibility="gone"
         android:src="@drawable/img_slash_bg"/>
 
     <EditText
         android:id="@+id/profile_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Toki"
+        android:text="User name"
         android:textStyle="bold"
         android:enabled="false"
         android:backgroundTint="@color/white"
         android:textSize="24dp"
         android:layout_marginTop="10dp"
-        android:visibility="gone"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/avatar"
@@ -42,7 +40,6 @@
         android:layout_height="25dp"
         android:layout_marginTop="20dp"
         android:src="@drawable/icon_drawer_cake"
-        android:visibility="gone"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/profile_name" />
 
@@ -50,12 +47,11 @@
         android:id="@+id/profile_birthday"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="20/04/2004"
+        android:text="DD/MM/YYYY"
         android:enabled="false"
         android:layout_marginTop="15dp"
         android:layout_marginStart="10dp"
         android:backgroundTint="@color/white"
-        android:visibility="gone"
         android:textSize="15dp"
         app:layout_constraintStart_toEndOf="@id/drawer_icon_cake"
         app:layout_constraintTop_toBottomOf="@+id/profile_name"
@@ -68,7 +64,6 @@
         android:layout_height="25dp"
         android:layout_marginTop="20dp"
         android:src="@drawable/icon_drawer_mail"
-        android:visibility="gone"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/drawer_icon_cake" />
 
@@ -76,12 +71,11 @@
         android:id="@+id/profile_mail"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="daopham@gmail.com"
+        android:text="email@gmail.com"
         android:enabled="false"
         android:layout_marginTop="10dp"
         android:layout_marginStart="10dp"
         android:backgroundTint="@color/white"
-        android:visibility="gone"
         android:textSize="15dp"
         app:layout_constraintStart_toEndOf="@id/drawer_icon_cake"
         app:layout_constraintTop_toBottomOf="@+id/drawer_icon_cake"
@@ -94,7 +88,6 @@
         android:layout_height="25dp"
         android:layout_marginTop="20dp"
         android:src="@drawable/icon_drawer_genders"
-        android:visibility="gone"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/drawer_icon_mail" />
 
@@ -112,7 +105,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checked="true"
-            android:visibility="gone"
             android:enabled="false"
             android:text="Male" />
 
@@ -120,7 +112,6 @@
             android:id="@+id/radio_female"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:visibility="gone"
             android:enabled="false"
             android:text="Female" />
     </RadioGroup>
@@ -131,7 +122,6 @@
         android:layout_height="wrap_content"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:visibility="gone"
         android:layout_marginTop="20dp"
         android:text="Edit Profile"
         android:background="@drawable/shape_button"
@@ -139,21 +129,6 @@
         android:paddingHorizontal="10dp"
         android:paddingVertical="5dp"
         app:layout_constraintTop_toBottomOf="@+id/drawer_icon_gender"
-        />
-    <TextView
-        android:id="@+id/profile_btn_login"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="20dp"
-        android:text="Login"
-        android:background="@drawable/shape_button"
-        android:textColor="@color/white"
-        android:paddingHorizontal="10dp"
-        android:paddingVertical="5dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
         />
     <TextView
         android:id="@+id/profile_btn_cancel"
@@ -189,7 +164,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:layout_constraintStart_toStartOf="parent"
-        android:visibility="gone"
         android:layout_marginTop="10dp"
         android:textStyle="bold"
         android:text="Reminder List:"
@@ -202,7 +176,6 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         app:layout_constraintStart_toStartOf="parent"
-        android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@+id/reminder_drawer_title"
         android:layout_marginBottom="20dp"
         android:layout_marginTop="10dp"
@@ -213,7 +186,6 @@
         android:id="@+id/reminder_btn_show"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:visibility="gone"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:text="Show All"
