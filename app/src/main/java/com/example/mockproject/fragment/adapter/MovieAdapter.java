@@ -50,10 +50,12 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
             holder.rating.setVisibility(View.GONE);
             holder.overview.setVisibility(View.GONE);
             holder.releaseDate.setVisibility(View.GONE);
+            holder.ignoreChildIcon.setVisibility(View.GONE);
         } else {
             holder.rating.setVisibility(View.VISIBLE);
             holder.overview.setVisibility(View.VISIBLE);
             holder.releaseDate.setVisibility(View.VISIBLE);
+            holder.ignoreChildIcon.setVisibility(movie.getIsAdultMoview() ? View.VISIBLE : View.GONE);
             holder.rating.setText(movie.getRating() +"/10.0");
             holder.overview.setText(movie.getOverview());
             holder.releaseDate.setText(movie.getReleaseDate());
@@ -66,11 +68,8 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
     }
 
     static class MovieViewHolder extends RecyclerView.ViewHolder {
-        TextView title;
-        ImageView image;
-        TextView rating;
-        TextView overview;
-        TextView releaseDate;
+        TextView title, rating, overview, releaseDate;
+        ImageView image, ignoreChildIcon;
 
         public MovieViewHolder(View itemView) {
             super(itemView);
@@ -79,6 +78,7 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
             rating = itemView.findViewById(R.id.movieRating);
             overview = itemView.findViewById(R.id.movieOverview);
             releaseDate = itemView.findViewById(R.id.movieReleaseDate);
+            ignoreChildIcon = itemView.findViewById(R.id.movieIgnoreChild);
         }
     }
 }

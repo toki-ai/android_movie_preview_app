@@ -3,8 +3,13 @@ package com.example.mockproject.entities;
 import com.google.gson.annotations.SerializedName;
 
 public class Movie {
+    @SerializedName("id")
+    private int id;
     @SerializedName("title")
     private String title;
+
+    @SerializedName("adult")
+    private boolean isAdultMovie;
 
     @SerializedName("poster_path")
     private String posterPath;
@@ -20,6 +25,9 @@ public class Movie {
 
     public String getOverview() {
         return overview;
+    }
+    public boolean getIsAdultMoview() {
+        return isAdultMovie;
     }
 
     public String getRating() {

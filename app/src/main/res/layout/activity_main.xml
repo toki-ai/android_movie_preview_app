@@ -24,12 +24,12 @@
 
             <ImageButton
                 android:id="@+id/toolbar_icon_burger"
-                android:layout_width="25dp"
-                android:layout_height="25dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:scaleType="fitCenter"
                 android:contentDescription="icon burger"
-                android:src="@drawable/icon_burger"
-                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/icon_toolbar_burger"
+                android:background="@color/slash_bg"
                 android:layout_marginStart="16dp"
                 android:layout_gravity="start"/>
 
@@ -44,13 +44,24 @@
                 android:layout_marginStart="16dp"/>
 
             <ImageButton
+                android:id="@+id/toolbar_icon_more"
+                android:contentDescription="icon more"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/icon_toolbar_more"
+                android:background="@color/slash_bg"
+                android:layout_marginEnd="16dp"
+                android:layout_gravity="end"/>
+
+            <ImageButton
                 android:id="@+id/toolbar_icon_list"
                 android:contentDescription="icon list"
-                android:layout_width="25dp"
-                android:layout_height="25dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:scaleType="fitCenter"
-                android:src="@drawable/icon_grid"
-                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/icon_toolbar_grid"
+                android:background="@color/slash_bg"
                 android:layout_marginEnd="16dp"
                 android:layout_gravity="end"/>
 
@@ -83,6 +94,7 @@
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_gravity="start"
-        app:headerLayout="@layout/drawer_profile_header" />
+        android:background="@color/white"
+        app:headerLayout="@layout/header_drawer_profile" />
 
 </androidx.drawerlayout.widget.DrawerLayout>
