@@ -70,11 +70,11 @@ public class UserRepository {
                     ? null
                     : cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.UserEntry.USER_COLUMN_BIRTHDAY));
             String email = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.UserEntry.USER_COLUMN_EMAIL));
-            boolean gender = !cursor.isNull(cursor.getColumnIndexOrThrow(DatabaseHelper.UserEntry.USER_COLUMN_GENDER)) && cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseHelper.UserEntry.USER_COLUMN_GENDER)) == 0;
+            boolean gender = cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseHelper.UserEntry.USER_COLUMN_GENDER)) == 1;
             String image = cursor.isNull(cursor.getColumnIndexOrThrow(DatabaseHelper.UserEntry.USER_COLUMN_IMAGE))
                     ? null
                     : cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.UserEntry.USER_COLUMN_IMAGE));
-            user = new User(name, birthday, gender, email, image);
+            user = new User(name, image, gender, email, birthday);
         }
 
         cursor.close();

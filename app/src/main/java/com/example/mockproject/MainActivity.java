@@ -5,9 +5,13 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -309,16 +313,24 @@ public class MainActivity extends AppCompatActivity {
         profileUsername.setText(account.getName());
         profileEmail.setText(account.getEmail());
 
-        if(account.isGender()){
+        if (account.isGender()) {
             isMale.setChecked(true);
-            isFemale.setChecked(false);
-        }else{
-            isMale.setChecked(false);
+        } else {
             isFemale.setChecked(true);
         }
 
         if(account.getBirthday() != null){
             profileBirthday.setText(account.getBirthday());
+        }
+
+        if(account.getImage() != null){
+            try {
+                byte[] decodedBytes = Base64.decode(account.getImage(), Base64.DEFAULT);
+                Bitmap avatarBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+                profileAvatar.setImageBitmap(avatarBitmap);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         btnLogout.setOnClickListener(v ->{
@@ -337,8 +349,9 @@ public class MainActivity extends AppCompatActivity {
         });
 
         btnSave.setOnClickListener(v -> {
-            saveProfileToDatabase(userId);
+            saveProfileToDatabase(userId, headerView);
             setProfileEditMode(false);
+            loadDrawerData(headerView, userId);
         });
     }
 
@@ -383,20 +396,38 @@ public class MainActivity extends AppCompatActivity {
         return Base64.encodeToString(byteArray, Base64.DEFAULT);
     }
 
-    private void saveProfileToDatabase(String userId){
+    private void saveProfileToDatabase(String userId, View headerView){
         String name = profileUsername.getText().toString().trim();
         String email = profileEmail.getText().toString().trim();
         if(name.isEmpty() || email.isEmpty()){
             Toast.makeText(MainActivity.this, "Please fill username and email", Toast.LENGTH_SHORT).show();
+            return;
         }
-        String birthday = profileBirthday.getText().toString().trim().replace("DD/MM/YYYY", "");
-        boolean gender  = isMale.isChecked();
-        String message;
-        if (userRepository.updateUserProfile(Integer.parseInt(userId), name, birthday.isEmpty() ? null : birthday, email, null, gender ? 1 : 0) > 0){
-            message = "Update profile successfully!";
-        }else{
-            message = "Fail to update Profile";
+
+        String birthday = profileBirthday.getText().toString().trim();
+        int gender  = isMale.isChecked() ? 1 : 0;
+
+        String image = null;
+        Drawable drawable = profileAvatar.getDrawable();
+
+        if (drawable instanceof BitmapDrawable) {
+            Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
+            if (bitmap != null) {
+                image = bitmapToString(bitmap);
+            } else {
+                Log.e("saveProfileToDatabase", "Bitmap is null even though Drawable is not null.");
+            }
+        } else {
+            Log.e("saveProfileToDatabase", "Drawable is not an instance of BitmapDrawable.");
         }
-        Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+
+        int rowsUpdated = userRepository.updateUserProfile(Integer.parseInt(userId), name, birthday, email, image, gender);
+
+        if (rowsUpdated > 0) {
+            Toast.makeText(MainActivity.this, "Update profile successfully!", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(MainActivity.this, "Fail to update Profile", Toast.LENGTH_SHORT).show();
+        }
     }
+
 }
