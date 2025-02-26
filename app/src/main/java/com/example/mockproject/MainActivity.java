@@ -3,45 +3,80 @@ package com.example.mockproject;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.Bundle;
-import android.view.Menu;
+import android.provider.MediaStore;
+import android.util.Base64;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.appcompat.widget.Toolbar;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
-import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.mockproject.database.UserRepository;
+import com.example.mockproject.entities.User;
 import com.example.mockproject.fragment.AboutFragment;
 import com.example.mockproject.fragment.FavoriteFragment;
 import com.example.mockproject.fragment.ListMoviesFragment;
 import com.example.mockproject.fragment.SettingsFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.navigation.NavigationView;
+import android.Manifest;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
 
     private Fragment currentFragment;
     private OnToolbarClickListener toolbarClickListener;
-    private ActivityResultLauncher<Intent> cameraLauncher, galleryLauncher;
+    private UserRepository userRepository;
     private boolean isGrid = false;
-    private ImageButton toolbarIconList;
-    private ImageView toolbarOptionsMenu;
+    private ImageButton toolbarIconList, toolbarOptionsMenu;
+    private ImageView profileAvatar;
+    private TextView profileUsername, profileEmail, profileBirthday, btnEdit, btnLogout, btnCancel, btnSave;
+    private RadioButton isMale, isFemale;
     private SharedPreferences sharedPreferences;
     public static final String USER_ID = "user_id";
     public static final String SHARE_KEY = "mock_prj";
+
+    private static final int REQUEST_CAMERA_PERMISSION = 100;
+    private final ActivityResultLauncher<Intent> cameraLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    Bitmap bitmap = (Bitmap) result.getData().getExtras().get("data");
+                    if (bitmap != null) {
+                        profileAvatar.setImageBitmap(bitmap);
+                    }
+                }
+            });
+    private ActivityResultLauncher<Intent> galleryLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+        if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+            try {
+                Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), result.getData().getData());
+                profileAvatar.setImageBitmap(bitmap);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    });
 
     public void setToolbarClickListener(OnToolbarClickListener listener) {
         this.toolbarClickListener = listener;
@@ -53,18 +88,32 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
         sharedPreferences = getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
+        userRepository = new UserRepository(MainActivity.this);
 
         setUpToolbar();
-        setUpOptionsMenu();
         setUpDrawer();
         setUpBottomNavAndVisibleToolbar();
-        setUpToolbarIconList();
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_CAMERA_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Camera permission granted!", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Camera permission denied!", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private void setUpBottomNavAndVisibleToolbar(){
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_nav);
         TextView toolbarTitle = findViewById(R.id.toolbar_title);
-        toolbarIconList = findViewById(R.id.toolbar_icon_list);
 
         currentFragment = new ListMoviesFragment();
         getSupportFragmentManager().beginTransaction()
@@ -139,6 +188,11 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayShowTitleEnabled(false);
+        toolbarIconList = findViewById(R.id.toolbar_icon_list);
+        toolbarOptionsMenu = findViewById(R.id.toolbar_icon_more);
+
+        setUpToolbarOptionsMenu();
+        setUpToolbarIconList();
     }
 
     private void setUpToolbarIconList(){
@@ -151,8 +205,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void setUpOptionsMenu(){
-        toolbarOptionsMenu = findViewById(R.id.toolbar_icon_more);
+    private void setUpToolbarOptionsMenu(){
         toolbarOptionsMenu.setOnClickListener(view -> {
             PopupMenu popup = new PopupMenu(this, view);
             popup.getMenuInflater().inflate(R.menu.options_menu, popup.getMenu());
@@ -183,14 +236,15 @@ public class MainActivity extends AppCompatActivity {
 
         navigationView.removeHeaderView(navigationView.getHeaderView(0));
         String userId = sharedPreferences.getString(USER_ID, "");
-        int headerLayout = userId.isEmpty() ? R.layout.header_drawer_profile : R.layout.header_drawer_guest;
+        int headerLayout = !userId.isEmpty() ? R.layout.header_drawer_profile : R.layout.header_drawer_guest;
+
         View headerView = getLayoutInflater().inflate(headerLayout, navigationView, false);
         navigationView.addHeaderView(headerView);
 
-        if (!userId.isEmpty()){
-            login();
+        if (userId.isEmpty()){
+            login(headerView, drawerLayout, navigationView);
         }else{
-            loadDrawerData();
+            loadDrawerData(headerView, userId);
         }
 
         btnToggle.setOnClickListener(view -> {
@@ -202,36 +256,147 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void login(){
-
+    private void login(View headerView, DrawerLayout drawerLayout, NavigationView navigationView) {
+        TextView btnLogin = headerView.findViewById(R.id.profile_btn_login);
+        btnLogin.setOnClickListener(v -> {
+            drawerLayout.closeDrawer(navigationView);
+            showBottomDialog(MainActivity.this);
+        });
     }
 
-    private void loadDrawerData(){
-        cameraLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-            if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                Bitmap bitmap = (Bitmap) result.getData().getExtras().get("data");
-                if (bitmap != null) {
-//                    ivAvatar.setImageBitmap(bitmap);
-//                    saveImageToPreferences(bitmap);
-                }
+    public void showBottomDialog(Context context) {
+        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(context);
+        bottomSheetDialog.setContentView(R.layout.dialog_login);
+        EditText inputEmail = bottomSheetDialog.findViewById(R.id.login_email);
+        EditText inputUsername = bottomSheetDialog.findViewById(R.id.login_username);
+        TextView btnSignIn = bottomSheetDialog.findViewById(R.id.login_submit);
+
+        btnSignIn.setOnClickListener(v -> {
+            String email = inputEmail.getText().toString().trim();
+            String username = inputUsername.getText().toString().trim();
+
+            if (email.isEmpty() || username.isEmpty()) {
+                Toast.makeText(context, "Please input email and profileUsername", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            long userId = userRepository.login(username, null, email, null, null);
+            if(userId > 0){
+                sharedPreferences.edit().putString(USER_ID, String.valueOf(userId)).apply();
+                Toast.makeText(context, "Login successfully!", Toast.LENGTH_SHORT).show();
+                setUpDrawer();
+                bottomSheetDialog.dismiss();
             }
         });
+        bottomSheetDialog.show();
+    }
 
-        galleryLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-            if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-//                try {
-//                    Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), result.getData().getData());
-//                    ivAvatar.setImageBitmap(bitmap);
-//                    saveImageToPreferences(bitmap);
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
-            }
+
+    private void loadDrawerData(View headerView, String userId){
+        profileAvatar = headerView.findViewById(R.id.profile_avatar);
+        profileUsername = headerView.findViewById(R.id.profile_name);
+        profileEmail = headerView.findViewById(R.id.profile_mail);
+        profileBirthday = headerView.findViewById(R.id.profile_birthday);
+        isMale = headerView.findViewById(R.id.radio_male);
+        isFemale = headerView.findViewById(R.id.radio_female);
+
+        btnLogout = headerView.findViewById(R.id.profile_btn_logout);
+        btnEdit = headerView.findViewById(R.id.profile_btn_edit);
+        btnCancel = headerView.findViewById(R.id.profile_btn_cancel);
+        btnSave = headerView.findViewById(R.id.profile_btn_save);
+
+        User account = userRepository.getUserById(Integer.parseInt(userId));
+        profileUsername.setText(account.getName());
+        profileEmail.setText(account.getEmail());
+
+        if(account.isGender()){
+            isMale.setChecked(true);
+            isFemale.setChecked(false);
+        }else{
+            isMale.setChecked(false);
+            isFemale.setChecked(true);
+        }
+
+        if(account.getBirthday() != null){
+            profileBirthday.setText(account.getBirthday());
+        }
+
+        btnLogout.setOnClickListener(v ->{
+           sharedPreferences.edit().remove(USER_ID).apply();
+           Toast.makeText(MainActivity.this, "Logout successfully!", Toast.LENGTH_SHORT).show();
+           setUpDrawer();
+        });
+
+        btnEdit.setOnClickListener(v ->{
+            setProfileEditMode(true);
+        });
+
+        btnCancel.setOnClickListener(v -> {
+            setProfileEditMode(false);
+            loadDrawerData(headerView, userId);
+        });
+
+        btnSave.setOnClickListener(v -> {
+            saveProfileToDatabase(userId);
+            setProfileEditMode(false);
         });
     }
 
     private void setProfileEditMode(boolean isEdit){
+        isMale.setEnabled(isEdit);
+        isFemale.setEnabled(isEdit);
+        profileUsername.setEnabled(isEdit);
+        profileEmail.setEnabled(isEdit);
+        profileBirthday.setEnabled(isEdit);
+        btnLogout.setVisibility(isEdit ? View.GONE : View.VISIBLE);
+        btnEdit.setVisibility(isEdit ? View.GONE : View.VISIBLE);
+        btnSave.setVisibility(isEdit ? View.VISIBLE : View.GONE);
+        btnCancel.setVisibility(isEdit ? View.VISIBLE : View.GONE);
 
+        if(isEdit){
+            profileAvatar.setOnClickListener( v -> {
+                showMediaPopup();
+            });
+        } else{
+            profileAvatar.setOnClickListener( v -> {});
+        }
     }
 
+    private void showMediaPopup(){
+        PopupMenu popupMenu = new PopupMenu(MainActivity.this, profileAvatar);
+        popupMenu.getMenuInflater().inflate(R.menu.camera_menu, popupMenu.getMenu());
+        popupMenu.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == R.id.camera_menu_camera) {
+                cameraLauncher.launch(new Intent(MediaStore.ACTION_IMAGE_CAPTURE));
+            } else if (item.getItemId() == R.id.camera_menu_gallery) {
+                galleryLauncher.launch(new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI));
+            }
+            return true;
+        });
+        popupMenu.show();
+    }
+
+    public String bitmapToString(Bitmap bitmap) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+        byte[] byteArray = byteArrayOutputStream.toByteArray();
+        return Base64.encodeToString(byteArray, Base64.DEFAULT);
+    }
+
+    private void saveProfileToDatabase(String userId){
+        String name = profileUsername.getText().toString().trim();
+        String email = profileEmail.getText().toString().trim();
+        if(name.isEmpty() || email.isEmpty()){
+            Toast.makeText(MainActivity.this, "Please fill username and email", Toast.LENGTH_SHORT).show();
+        }
+        String birthday = profileBirthday.getText().toString().trim().replace("DD/MM/YYYY", "");
+        boolean gender  = isMale.isChecked();
+        String message;
+        if (userRepository.updateUserProfile(Integer.parseInt(userId), name, birthday.isEmpty() ? null : birthday, email, null, gender ? 1 : 0) > 0){
+            message = "Update profile successfully!";
+        }else{
+            message = "Fail to update Profile";
+        }
+        Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+    }
 }

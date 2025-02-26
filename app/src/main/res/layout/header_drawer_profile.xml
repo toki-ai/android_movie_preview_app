@@ -6,7 +6,7 @@
     android:padding="16dp"
     android:background="@android:color/white">
     <ImageView
-        android:id="@+id/avatar"
+        android:id="@+id/profile_avatar"
         android:layout_width="100dp"
         android:layout_height="100dp"
         android:background="@drawable/shape_avatar_round"
@@ -30,7 +30,7 @@
         android:layout_marginTop="10dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/avatar"
+        app:layout_constraintTop_toBottomOf="@id/profile_avatar"
         />
 
     <ImageView
@@ -121,9 +121,23 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/profile_btn_logout"
         android:layout_marginTop="20dp"
         android:text="Edit Profile"
+        android:background="@drawable/shape_button"
+        android:textColor="@color/white"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="5dp"
+        app:layout_constraintTop_toBottomOf="@+id/drawer_icon_gender"
+        />
+    <TextView
+        android:id="@+id/profile_btn_logout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toEndOf="@id/profile_btn_edit"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="20dp"
+        android:text="Log out"
         android:background="@drawable/shape_button"
         android:textColor="@color/white"
         android:paddingHorizontal="10dp"
@@ -134,29 +148,31 @@
         android:id="@+id/profile_btn_cancel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:layout_constraintEnd_toStartOf="@+id/profile_btn_edit"
-        android:layout_marginTop="20dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/profile_btn_save"
         android:text="Cancel"
+        android:layout_marginTop="10dp"
         android:visibility="gone"
         android:background="@drawable/shape_button_gray"
         android:textColor="@color/white"
         android:paddingHorizontal="10dp"
         android:paddingVertical="5dp"
-        app:layout_constraintTop_toBottomOf="@+id/drawer_icon_gender"
+        app:layout_constraintTop_toBottomOf="@+id/profile_genders"
         />
     <TextView
         android:id="@+id/profile_btn_save"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:layout_constraintStart_toEndOf="@+id/profile_btn_edit"
-        android:layout_marginTop="20dp"
+        app:layout_constraintStart_toEndOf="@+id/profile_btn_cancel"
+        app:layout_constraintEnd_toEndOf="parent"
         android:text="Save"
+        android:layout_marginTop="10dp"
         android:visibility="gone"
         android:background="@drawable/shape_button"
         android:textColor="@color/white"
         android:paddingHorizontal="10dp"
         android:paddingVertical="5dp"
-        app:layout_constraintTop_toBottomOf="@+id/drawer_icon_gender"
+        app:layout_constraintTop_toBottomOf="@+id/profile_genders"
         />
 
     <TextView
@@ -164,10 +180,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="50dp"
         android:textStyle="bold"
         android:text="Reminder List:"
-        app:layout_constraintTop_toBottomOf="@+id/profile_btn_edit"
+        app:layout_constraintTop_toBottomOf="@+id/profile_genders"
         />
 
     <androidx.recyclerview.widget.RecyclerView
