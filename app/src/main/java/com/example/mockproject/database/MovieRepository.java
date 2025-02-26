@@ -21,17 +21,19 @@ public class MovieRepository {
         sharedPreferences = context.getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
     }
 
-    public void handleClickFavMovie(Movie movie) {
+    public boolean handleClickFavMovie(Movie movie) {
         String userId = sharedPreferences.getString(MainActivity.USER_ID, "");
         if (userId.isEmpty()) {
-            return;
+            return false;
         }
         int uid = Integer.parseInt(userId);
 
         if (isMovieAdded(uid, movie.getId())) {
-            deleteFavMovie(uid, movie.getId());
+            if(deleteFavMovie(uid, movie.getId()) > 0) return true;
+            return false;
         } else {
-            addNewFavMovie(uid, movie);
+            if (addNewFavMovie(uid, movie) > 0) return true;
+            return false;
         }
     }
 

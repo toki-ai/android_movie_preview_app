@@ -81,11 +81,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             "DROP TABLE IF EXISTS " + FavMoviesUsersEntry.TABLE_NAME;
     private static final String QUERY_CREATE_REMINDER_TABLE =
             "CREATE TABLE " + ReminderEntry.REMINDER_TABLE_NAME + " ("
-                    + ReminderEntry.REMINDER_COLUMN_ID + " INTEGER PRIMARY KEY, "
+                    + ReminderEntry.REMINDER_COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                     + ReminderEntry.REMINDER_COLUMN_TIME + " TEXT NOT NULL, "
                     + "user_id INTEGER NOT NULL, "
-                    + "FOREIGN KEY(user_id) REFERENCES " + UserEntry.USER_TABLE_NAME + "(" + UserEntry.USER_COLUMN_ID + "))";
-
+                    + "movie_id INTEGER NOT NULL, "
+                    + "FOREIGN KEY(user_id) REFERENCES " + UserEntry.USER_TABLE_NAME + "(" + UserEntry.USER_COLUMN_ID + "), "
+                    + "FOREIGN KEY(movie_id) REFERENCES " + FavMovieEntry.MOVIE_TABLE_NAME + "(" + FavMovieEntry.MOVIE_COLUMN_ID + "))";
     private static String QUERY_DROP_REMINDER_TABLE =
             "DROP TABLE IF EXISTS " + ReminderEntry.REMINDER_TABLE_NAME;
 
