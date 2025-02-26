@@ -65,8 +65,6 @@ public class ListMoviesFragment extends Fragment implements OnToolbarClickListen
     }
 
     private void fetchMovies(int page, String fetchType) {
-        Log.d("DEBUG", "fetchMovies called with page: " + page + ", fetchType: " + fetchType);
-
         Call<MovieResponse> call = null;
         switch(fetchType) {
             case TYPE_POPULAR:
@@ -82,39 +80,26 @@ public class ListMoviesFragment extends Fragment implements OnToolbarClickListen
                 call = movieApiService.getTopRatedMovies(API_KEY, page);
                 break;
             default:
-                Log.e("ERROR", "Invalid fetchType: " + fetchType);
                 return;
         }
-
         if (call == null) {
-            Log.e("ERROR", "API call is null");
             return;
         }
-
-        Log.d("DEBUG", "API call initiated...");
-
         call.enqueue(new Callback<MovieResponse>() {
             @Override
             public void onResponse(@NonNull Call<MovieResponse> call, @NonNull Response<MovieResponse> response) {
-                Log.d("DEBUG", "onResponse called. Response code: " + response.code());
                 if (response.isSuccessful() && response.body() != null) {
                     List<Movie> movies = response.body().getMovies();
-                    Log.d("DEBUG", "Movies received: " + movies.size());
                     movieAdapter.updateMovies(movies);
                 } else {
-                    Log.e("ERROR", "Response failed. Code: " + response.code() + ", message: " + response.message());
                     Toast.makeText(requireContext(), "Failed to load movies", Toast.LENGTH_SHORT).show();
                 }
             }
-
             @Override
             public void onFailure(@NonNull Call<MovieResponse> call, @NonNull Throwable t) {
-                Log.e("ERROR", "onFailure called. Message: " + t.getMessage());
                 Toast.makeText(requireContext(), "Network error", Toast.LENGTH_SHORT).show();
             }
         });
-
-        Log.d("DEBUG", "API call enqueued...");
     }
 
 
