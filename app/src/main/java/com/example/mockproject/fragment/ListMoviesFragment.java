@@ -1,7 +1,6 @@
 package com.example.mockproject.fragment;
 
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,8 +14,7 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.mockproject.MainActivity;
-import com.example.mockproject.OnToolbarClickListener;
+import com.example.mockproject.OnUpdateMovieListListener;
 import com.example.mockproject.R;
 import com.example.mockproject.api.ApiClient;
 import com.example.mockproject.api.MovieApiService;
@@ -26,13 +24,12 @@ import com.example.mockproject.fragment.adapter.MovieAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class ListMoviesFragment extends Fragment implements OnToolbarClickListener {
+public class ListMoviesFragment extends Fragment implements OnUpdateMovieListListener {
     private static final String API_KEY = "e7631ffcb8e766993e5ec0c1f4245f93";
     public static final String TYPE_POPULAR = "POPULAR";
     public static final String TYPE_UPCOMING = "UPCOMING";
@@ -49,7 +46,7 @@ public class ListMoviesFragment extends Fragment implements OnToolbarClickListen
         View view = inflater.inflate(R.layout.fragment_list_movies, container, false);
 
         recyclerView = view.findViewById(R.id.recyclerView);
-        movieAdapter = new MovieAdapter(new ArrayList<>(), isGrid);
+        movieAdapter = new MovieAdapter(new ArrayList<>(), isGrid, getContext(), MovieAdapter.TYPE.LIST);
         recyclerView.setAdapter(movieAdapter);
         recyclerView.addItemDecoration(new DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL));
         updateLayoutManager();
@@ -65,7 +62,7 @@ public class ListMoviesFragment extends Fragment implements OnToolbarClickListen
     }
 
     private void fetchMovies(int page, String fetchType) {
-        Call<MovieResponse> call = null;
+        Call<MovieResponse> call;
         switch(fetchType) {
             case TYPE_POPULAR:
                 call = movieApiService.getPopularMovies(API_KEY, page);
@@ -85,7 +82,7 @@ public class ListMoviesFragment extends Fragment implements OnToolbarClickListen
         if (call == null) {
             return;
         }
-        call.enqueue(new Callback<MovieResponse>() {
+        call.enqueue(new Callback<>() {
             @Override
             public void onResponse(@NonNull Call<MovieResponse> call, @NonNull Response<MovieResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
@@ -102,17 +99,21 @@ public class ListMoviesFragment extends Fragment implements OnToolbarClickListen
         });
     }
 
-
     @Override
     public void onToolbarIconClick() {
         isGrid = !isGrid;
         updateLayoutManager();
-        movieAdapter = new MovieAdapter(movieAdapter.getMovies(), isGrid);
+        movieAdapter = new MovieAdapter(movieAdapter.getMovies(), isGrid, getContext(), MovieAdapter.TYPE.LIST);
         recyclerView.setAdapter(movieAdapter);
     }
 
     @Override
     public void onToolbarOpsClick(String type) {
         fetchMovies(1, type);
+    }
+
+    @Override
+    public void onUpdateItemStarFav(int movieId) {
+        movieAdapter.updateItemFavStar(movieId);
     }
 }

@@ -39,6 +39,7 @@ import com.example.mockproject.fragment.AboutFragment;
 import com.example.mockproject.fragment.FavoriteFragment;
 import com.example.mockproject.fragment.ListMoviesFragment;
 import com.example.mockproject.fragment.SettingsFragment;
+import com.example.mockproject.fragment.adapter.MovieAdapter;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.navigation.NavigationView;
@@ -46,11 +47,13 @@ import android.Manifest;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Objects;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements OnLoginRequestListener, OnUpdateStarFavoriteListener{
 
     private Fragment currentFragment;
-    private OnToolbarClickListener toolbarClickListener;
+    private OnUpdateMovieListListener toolbarClickListener;
+    private OnUpdateFavoriteListListener onUpdateFavListListener;
     private UserRepository userRepository;
     private boolean isGrid = false;
     private ImageButton toolbarIconList, toolbarOptionsMenu;
@@ -60,30 +63,36 @@ public class MainActivity extends AppCompatActivity {
     private SharedPreferences sharedPreferences;
     public static final String USER_ID = "user_id";
     public static final String SHARE_KEY = "mock_prj";
+    private DrawerLayout drawerLayout;
+    private NavigationView navigationView;
 
     private static final int REQUEST_CAMERA_PERMISSION = 100;
     private final ActivityResultLauncher<Intent> cameraLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                    Bitmap bitmap = (Bitmap) result.getData().getExtras().get("data");
+                    Bitmap bitmap = (Bitmap) Objects.requireNonNull(result.getData().getExtras()).get("data");
                     if (bitmap != null) {
                         profileAvatar.setImageBitmap(bitmap);
                     }
                 }
             });
-    private ActivityResultLauncher<Intent> galleryLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+    private final ActivityResultLauncher<Intent> galleryLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
         if (result.getResultCode() == RESULT_OK && result.getData() != null) {
             try {
                 Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), result.getData().getData());
                 profileAvatar.setImageBitmap(bitmap);
             } catch (IOException e) {
-                e.printStackTrace();
+                Log.e("Main Activity", Objects.requireNonNull(e.getMessage()));
             }
         }
     });
 
-    public void setToolbarClickListener(OnToolbarClickListener listener) {
+    public void setToolbarClickListener(OnUpdateMovieListListener listener) {
         this.toolbarClickListener = listener;
+    }
+
+    public void setOnUpdateFavListListener(OnUpdateFavoriteListListener listener) {
+        this.onUpdateFavListListener = listener;
     }
 
     @Override
@@ -97,6 +106,9 @@ public class MainActivity extends AppCompatActivity {
         setUpToolbar();
         setUpDrawer();
         setUpBottomNavAndVisibleToolbar();
+
+        FavoriteFragment favoriteFragment = (FavoriteFragment) getOrCreateFragment(FavoriteFragment.class, "Favorites");
+        setOnUpdateFavListListener(favoriteFragment);
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
@@ -124,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
                 .add(R.id.frame_container, currentFragment, "Movies")
                 .commit();
 
-        setToolbarClickListener((OnToolbarClickListener) currentFragment);
+        setToolbarClickListener((OnUpdateMovieListListener) currentFragment);
 
         bottomNavigationView.setOnItemSelectedListener(item -> {
             Fragment selectedFragment = null;
@@ -140,6 +152,7 @@ public class MainActivity extends AppCompatActivity {
                 selectedFragment = getOrCreateFragment(FavoriteFragment.class, "Favorites");
                 title = "Favorites";
                 isVisibleOpsMenu = false;
+                setOnUpdateFavListListener((OnUpdateFavoriteListListener) selectedFragment);
                 toolbarIconList.setImageResource(R.drawable.icon_toolbar_search);
             } else if (item.getItemId() == R.id.nav_setting) {
                 selectedFragment = getOrCreateFragment(SettingsFragment.class, "Settings");
@@ -169,7 +182,7 @@ public class MainActivity extends AppCompatActivity {
             try {
                 fragment = fragmentClass.newInstance();
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e("Main Activity", Objects.requireNonNull(e.getMessage()));
             }
         }
         return fragment;
@@ -191,7 +204,7 @@ public class MainActivity extends AppCompatActivity {
     private void setUpToolbar(){
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        getSupportActionBar().setDisplayShowTitleEnabled(false);
+        Objects.requireNonNull(getSupportActionBar()).setDisplayShowTitleEnabled(false);
         toolbarIconList = findViewById(R.id.toolbar_icon_list);
         toolbarOptionsMenu = findViewById(R.id.toolbar_icon_more);
 
@@ -233,10 +246,11 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+
     private void setUpDrawer(){
-        DrawerLayout drawerLayout = findViewById(R.id.drawer_layout);
+        drawerLayout = findViewById(R.id.drawer_layout);
         ImageButton btnToggle = findViewById(R.id.toolbar_icon_burger);
-        NavigationView navigationView = findViewById(R.id.drawer_nav);
+        navigationView = findViewById(R.id.drawer_nav);
 
         navigationView.removeHeaderView(navigationView.getHeaderView(0));
         String userId = sharedPreferences.getString(USER_ID, "");
@@ -276,8 +290,8 @@ public class MainActivity extends AppCompatActivity {
         TextView btnSignIn = bottomSheetDialog.findViewById(R.id.login_submit);
 
         btnSignIn.setOnClickListener(v -> {
-            String email = inputEmail.getText().toString().trim();
-            String username = inputUsername.getText().toString().trim();
+            String email = inputEmail != null ? inputEmail.getText().toString().trim() : "";
+            String username = inputUsername != null ? inputUsername.getText().toString().trim() : "";
 
             if (email.isEmpty() || username.isEmpty()) {
                 Toast.makeText(context, "Please input email and profileUsername", Toast.LENGTH_SHORT).show();
@@ -290,11 +304,13 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(context, "Login successfully!", Toast.LENGTH_SHORT).show();
                 setUpDrawer();
                 bottomSheetDialog.dismiss();
+                if (onUpdateFavListListener != null) {
+                    onUpdateFavListListener.onUpdateFavoriteList();
+                }
             }
         });
         bottomSheetDialog.show();
     }
-
 
     private void loadDrawerData(View headerView, String userId){
         profileAvatar = headerView.findViewById(R.id.profile_avatar);
@@ -329,19 +345,20 @@ public class MainActivity extends AppCompatActivity {
                 Bitmap avatarBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
                 profileAvatar.setImageBitmap(avatarBitmap);
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e("Main Activity", Objects.requireNonNull(e.getMessage()));
             }
         }
 
         btnLogout.setOnClickListener(v ->{
            sharedPreferences.edit().remove(USER_ID).apply();
            Toast.makeText(MainActivity.this, "Logout successfully!", Toast.LENGTH_SHORT).show();
+            if (onUpdateFavListListener != null) {
+                onUpdateFavListListener.onUpdateFavoriteUILogin();
+            }
            setUpDrawer();
         });
 
-        btnEdit.setOnClickListener(v ->{
-            setProfileEditMode(true);
-        });
+        btnEdit.setOnClickListener(v -> setProfileEditMode(true));
 
         btnCancel.setOnClickListener(v -> {
             setProfileEditMode(false);
@@ -349,7 +366,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         btnSave.setOnClickListener(v -> {
-            saveProfileToDatabase(userId, headerView);
+            saveProfileToDatabase(userId);
             setProfileEditMode(false);
             loadDrawerData(headerView, userId);
         });
@@ -367,9 +384,7 @@ public class MainActivity extends AppCompatActivity {
         btnCancel.setVisibility(isEdit ? View.VISIBLE : View.GONE);
 
         if(isEdit){
-            profileAvatar.setOnClickListener( v -> {
-                showMediaPopup();
-            });
+            profileAvatar.setOnClickListener( v -> showMediaPopup());
         } else{
             profileAvatar.setOnClickListener( v -> {});
         }
@@ -396,7 +411,7 @@ public class MainActivity extends AppCompatActivity {
         return Base64.encodeToString(byteArray, Base64.DEFAULT);
     }
 
-    private void saveProfileToDatabase(String userId, View headerView){
+    private void saveProfileToDatabase(String userId){
         String name = profileUsername.getText().toString().trim();
         String email = profileEmail.getText().toString().trim();
         if(name.isEmpty() || email.isEmpty()){
@@ -430,4 +445,22 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    public void onLoginRequested() {
+        showBottomDialog(MainActivity.this);
+    }
+
+    @Override
+    public void onUpdateStartFavorite(int movieId, MovieAdapter.TYPE type) {
+        if(type.equals(MovieAdapter.TYPE.LIST)){
+            if(onUpdateFavListListener == null){
+                FavoriteFragment favoriteFragment = (FavoriteFragment) getOrCreateFragment(FavoriteFragment.class, "Favorites");
+                setOnUpdateFavListListener(favoriteFragment);
+            }
+            onUpdateFavListListener.onUpdateFavoriteList();
+
+        } else if (type.equals(MovieAdapter.TYPE.FAV)) {
+            toolbarClickListener.onUpdateItemStarFav(movieId);
+        }
+    }
 }

@@ -23,16 +23,18 @@ public class Movie {
     @SerializedName("release_date")
     private String releaseDate;
 
+    private boolean isFav;
+
     public Movie(int id, String title, float rating, String image, boolean isAdult, String releaseDate, String overview) {
         this.id = id;
         this.title = title;
         this.rating = rating;
         String baseUrl = "https://image.tmdb.org/t/p/w500";
-        String imagePath = image.replace(baseUrl, "");
-        this.posterPath = imagePath;
+        this.posterPath = image.replace(baseUrl, "");
         this.isAdultMovie = isAdult;
         this.releaseDate = releaseDate;
         this.overview = overview;
+        this.isFav = false;
     }
 
     public int getId() {
@@ -59,5 +61,13 @@ public class Movie {
 
     public String getPosterUrl() {
         return "https://image.tmdb.org/t/p/w500" + posterPath;
+    }
+
+    public void setFav(boolean fav) {
+        isFav = fav;
+    }
+
+    public boolean isFav() {
+        return isFav;
     }
 }
