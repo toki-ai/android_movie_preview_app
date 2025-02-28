@@ -22,6 +22,7 @@ public class Movie {
 
     @SerializedName("release_date")
     private String releaseDate;
+    private long stableId;
 
     private boolean isFav;
 
@@ -35,6 +36,19 @@ public class Movie {
         this.releaseDate = releaseDate;
         this.overview = overview;
         this.isFav = false;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Movie)) return false;
+        Movie other = (Movie) o;
+        return this.id == other.id;
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(id);
     }
 
     public int getId() {
@@ -69,5 +83,13 @@ public class Movie {
 
     public boolean isFav() {
         return isFav;
+    }
+
+    public long getStableId() {
+        return stableId;
+    }
+
+    public void setStableId(long stableId) {
+        this.stableId = stableId;
     }
 }

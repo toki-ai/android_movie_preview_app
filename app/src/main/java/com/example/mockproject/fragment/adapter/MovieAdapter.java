@@ -1,14 +1,14 @@
 package com.example.mockproject.fragment.adapter;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -23,31 +23,34 @@ import com.squareup.picasso.Picasso;
 import java.util.List;
 import java.util.Optional;
 
-public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHolder> {
+public class MovieAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private List<Movie> movies;
-    private boolean isGrid;
-    private MovieRepository movieRepository;
-    private SharedPreferences sharedPreferences;
+    private final boolean isGrid;
+    private final MovieRepository movieRepository;
+    private final SharedPreferences sharedPreferences;
+    private final OnUpdateStarFavoriteListener onUpdateStarFavoriteListener;
+    private boolean isLoadingAdded = false;
+    private static final int VIEW_TYPE_ITEM = 0;
+    private static final int VIEW_TYPE_LOADING = 1;
+    private static final int PAGE_SIZE = 20;
+    private final TYPE type;
     private Context context;
-    private OnUpdateStarFavoriteListener onUpdateStarFavoriteListener;
-    public List<Movie> getMovies() {
-        return movies;
-    }
-    private TYPE type;
-    public enum TYPE{
+
+    public enum TYPE {
         LIST, FAV
     }
 
-    public MovieAdapter(List<Movie> movies, boolean isGrid, Context context, TYPE type ) {
+    public MovieAdapter(List<Movie> movies, boolean isGrid, Context context, TYPE type) {
         this.movies = movies;
         this.isGrid = isGrid;
-        this.context = context;
         this.movieRepository = new MovieRepository(context);
         this.sharedPreferences = context.getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
         this.onUpdateStarFavoriteListener = (OnUpdateStarFavoriteListener) context;
+        this.context = context;
         this.type = type;
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     public void updateMovies(List<Movie> newMovies) {
         this.movies = newMovies;
         notifyDataSetChanged();
@@ -57,60 +60,125 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
         Optional<Movie> movieOptional = movies.stream()
                 .filter(movie -> movie.getId() == movieId)
                 .findFirst();
+        movieOptional.ifPresent(movie -> notifyItemChanged(movies.indexOf(movie)));
+    }
 
-        movieOptional.ifPresent(movie -> {
-            notifyItemChanged(movies.indexOf(movie));
-        });
+    @Override
+    public int getItemViewType(int position) {
+        return (position == movies.size() && isLoadingAdded) ? VIEW_TYPE_LOADING : VIEW_TYPE_ITEM;
     }
 
     @NonNull
     @Override
-    public MovieViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        int layoutId = isGrid ? R.layout.item_movie_grid : R.layout.item_movie_list;
-        View view = LayoutInflater.from(parent.getContext()).inflate(layoutId, parent, false);
-        return new MovieViewHolder(view);
+    public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        if (viewType == VIEW_TYPE_ITEM) {
+            int layoutId = isGrid ? R.layout.item_movie_grid : R.layout.item_movie_list;
+            View view = LayoutInflater.from(parent.getContext()).inflate(layoutId, parent, false);
+            return new MovieViewHolder(view);
+        } else {
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_loading, parent, false);
+            return new LoadingViewHolder(view);
+        }
     }
 
+    @SuppressLint("SetTextI18n")
     @Override
-    public void onBindViewHolder(@NonNull MovieViewHolder holder, int position) {
-        Movie movie = movies.get(position);
-        holder.title.setText(movie.getTitle());
-        Picasso.get().load(movie.getPosterUrl()).into(holder.image);
-        String userId = sharedPreferences.getString(MainActivity.USER_ID, "");
-        if (isGrid) {
-            holder.rating.setVisibility(View.GONE);
-            holder.overview.setVisibility(View.GONE);
-            holder.releaseDate.setVisibility(View.GONE);
-            holder.ignoreChildIcon.setVisibility(View.GONE);
-        } else {
-            holder.rating.setVisibility(View.VISIBLE);
-            holder.overview.setVisibility(View.VISIBLE);
-            holder.releaseDate.setVisibility(View.VISIBLE);
-            holder.ignoreChildIcon.setVisibility(movie.getIsAdultMovie() ? View.VISIBLE : View.GONE);
-            holder.rating.setText(movie.getRating() +"/10.0");
-            holder.overview.setText(movie.getOverview());
-            holder.releaseDate.setText(movie.getReleaseDate());
-            if(!userId.isEmpty()) {
-                movie.setFav(movieRepository.isMovieAdded(Integer.parseInt(userId), movie.getId()));
-                holder.btnMovieFavorite.setImageResource(!movie.isFav() ? R.drawable.icon_movie_start_outline : R.drawable.icon_movie_star);
-            }
-            holder.btnMovieFavorite.setOnClickListener(v -> {
-                if(type.equals(TYPE.LIST)) {
-                    movie.setFav(!movie.isFav());
-                    holder.btnMovieFavorite.setImageResource(!movie.isFav() ? R.drawable.icon_movie_start_outline : R.drawable.icon_movie_star);
-                } else if (type.equals(TYPE.FAV)) {
-                    movies.remove(position);
-                    notifyDataSetChanged();
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+        if (getItemViewType(position) == VIEW_TYPE_ITEM) {
+            MovieViewHolder movieHolder = (MovieViewHolder) holder;
+            Movie movie = movies.get(position);
+
+            movieHolder.title.setText(movie.getTitle());
+            Picasso.get().load(movie.getPosterUrl()).into(movieHolder.image);
+
+            String userId = sharedPreferences.getString(MainActivity.USER_ID, "");
+
+            if (isGrid) {
+                movieHolder.rating.setVisibility(View.GONE);
+                movieHolder.overview.setVisibility(View.GONE);
+                movieHolder.releaseDate.setVisibility(View.GONE);
+                movieHolder.ignoreChildIcon.setVisibility(View.GONE);
+                //movieHolder.btnMovieFavorite.setVisibility(View.GONE);
+            } else {
+                movieHolder.rating.setVisibility(View.VISIBLE);
+                movieHolder.overview.setVisibility(View.VISIBLE);
+                movieHolder.releaseDate.setVisibility(View.VISIBLE);
+                movieHolder.btnMovieFavorite.setVisibility(View.VISIBLE);
+
+                movieHolder.ignoreChildIcon.setVisibility(movie.getIsAdultMovie() ? View.VISIBLE : View.GONE);
+                movieHolder.rating.setText(movie.getRating() + "/10.0");
+                movieHolder.overview.setText(movie.getOverview());
+                movieHolder.releaseDate.setText(movie.getReleaseDate());
+
+                if (!userId.isEmpty()) {
+                    movie.setFav(movieRepository.isMovieAdded(Integer.parseInt(userId), movie.getId()));
+                    movieHolder.btnMovieFavorite.setImageResource(
+                            movie.isFav() ? R.drawable.icon_movie_star : R.drawable.icon_movie_start_outline
+                    );
                 }
-                movieRepository.handleClickFavMovie(movie);
-                onUpdateStarFavoriteListener.onUpdateStartFavorite(movie.getId(), type);
+
+                movieHolder.btnMovieFavorite.setOnClickListener(v -> {
+                    if (type.equals(TYPE.LIST)) {
+                        movie.setFav(!movie.isFav());
+                        movieHolder.btnMovieFavorite.setImageResource(
+                                movie.isFav() ? R.drawable.icon_movie_star : R.drawable.icon_movie_start_outline
+                        );
+                        notifyItemChanged(position);
+                    } else if (type.equals(TYPE.FAV)) {
+                            int indexToRemove = movies.indexOf(movie);
+                            if (indexToRemove != -1) {
+                                movies.remove(indexToRemove);
+                                notifyItemRemoved(indexToRemove);
+                            }
+                    }
+                    movieRepository.handleClickFavMovie(movie);
+                    onUpdateStarFavoriteListener.onUpdateStartFavorite(movie.getId(), type);
+                });
+            }
+            movieHolder.itemView.setOnClickListener(v -> {
+                if (context instanceof MainActivity) {
+                    ((MainActivity) context).openDetailFragment(movie.getId(), movie.getTitle());
+                }
             });
+        } else {
+            LoadingViewHolder loadingHolder = (LoadingViewHolder) holder;
+            loadingHolder.progressBar.setIndeterminate(true);
         }
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    public void addMovies(List<Movie> newMovies, int pageNumber) {
+        if (pageNumber == 1) {
+            movies.clear();
+        }
+        for (int i = 0; i < newMovies.size(); i++) {
+            Movie newMovie = newMovies.get(i);
+            newMovie.setStableId((long) (pageNumber - 1) *PAGE_SIZE + i );
+
+            if (!movies.contains(newMovie)) {
+                movies.add(newMovie);
+            }
+        }
+        notifyDataSetChanged();
+    }
+
+    public void addLoadingFooter() {
+        isLoadingAdded = true;
+        notifyItemInserted(movies.size());
+    }
+
+    public void removeLoadingFooter() {
+        isLoadingAdded = false;
+        notifyItemRemoved(movies.size());
+    }
+
+    public List<Movie> getMovies() {
+        return movies;
     }
 
     @Override
     public int getItemCount() {
-        return movies.size();
+        return isLoadingAdded ? movies.size() + 1 : movies.size();
     }
 
     static class MovieViewHolder extends RecyclerView.ViewHolder {
@@ -126,6 +194,14 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
             releaseDate = itemView.findViewById(R.id.movieReleaseDate);
             ignoreChildIcon = itemView.findViewById(R.id.movieIgnoreChild);
             btnMovieFavorite = itemView.findViewById(R.id.btn_movieFavorite);
+        }
+    }
+
+    static class LoadingViewHolder extends RecyclerView.ViewHolder {
+        ProgressBar progressBar;
+        public LoadingViewHolder(@NonNull View itemView) {
+            super(itemView);
+            progressBar = itemView.findViewById(R.id.progressBar);
         }
     }
 }

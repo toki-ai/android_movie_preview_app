@@ -19,7 +19,6 @@ import android.widget.Toast;
 import com.example.mockproject.MainActivity;
 import com.example.mockproject.OnLoginRequestListener;
 import com.example.mockproject.OnUpdateFavoriteListListener;
-import com.example.mockproject.OnUpdateStarFavoriteListener;
 import com.example.mockproject.R;
 import com.example.mockproject.database.MovieRepository;
 import com.example.mockproject.entities.Movie;
@@ -37,10 +36,6 @@ public class FavoriteFragment extends Fragment implements OnUpdateFavoriteListLi
     private ScrollView scrollView;
     private TextView btnLogin;
 
-    public static FavoriteFragment newInstance() {
-        return new FavoriteFragment();
-    }
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,7 +50,7 @@ public class FavoriteFragment extends Fragment implements OnUpdateFavoriteListLi
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_favorite, container, false);
         movieRepository = new MovieRepository(getContext());
-        sharedPreferences = getContext().getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
+        sharedPreferences = requireContext().getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
         String userId = sharedPreferences.getString(MainActivity.USER_ID, "");
 
         recyclerView = view.findViewById(R.id.fav_recyclerView);
@@ -80,6 +75,10 @@ public class FavoriteFragment extends Fragment implements OnUpdateFavoriteListLi
         scrollView.setVisibility(isLogin ? View.GONE : View.VISIBLE);
     }
 
+    public void showSearchResults(List<Movie> searchResults) {
+        favMovieAdapter.updateMovies(searchResults);
+    }
+
     @Override
     public void onUpdateFavoriteList() {
         setLoginMode(false);
@@ -88,7 +87,6 @@ public class FavoriteFragment extends Fragment implements OnUpdateFavoriteListLi
             return;
         }
         List<Movie> favMovies = movieRepository.getFavMoviesByUserId(Integer.parseInt(userId));
-
         favMovieAdapter.updateMovies(favMovies);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(favMovieAdapter);

@@ -5,35 +5,35 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
 
 import com.example.mockproject.MainActivity;
 import com.example.mockproject.entities.Movie;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class MovieRepository {
-    private DatabaseHelper dbDatabaseHelper;
-    private SharedPreferences sharedPreferences;
+    private final DatabaseHelper dbDatabaseHelper;
+    private final SharedPreferences sharedPreferences;
 
     public MovieRepository(Context context) {
         dbDatabaseHelper = new DatabaseHelper(context);
         sharedPreferences = context.getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
     }
 
-    public boolean handleClickFavMovie(Movie movie) {
+    public void handleClickFavMovie(Movie movie) {
         String userId = sharedPreferences.getString(MainActivity.USER_ID, "");
         if (userId.isEmpty()) {
-            return false;
+            return;
         }
         int uid = Integer.parseInt(userId);
 
         if (isMovieAdded(uid, movie.getId())) {
-            if(deleteFavMovie(uid, movie.getId()) > 0) return true;
-            return false;
+            deleteFavMovie(uid, movie.getId());
         } else {
-            if (addNewFavMovie(uid, movie) > 0) return true;
-            return false;
+            addNewFavMovie(uid, movie);
         }
     }
 
@@ -49,10 +49,9 @@ public class MovieRepository {
         return exists;
     }
 
-    public long addNewFavMovie(int userId, Movie movie) {
+    public void addNewFavMovie(int userId, Movie movie) {
         SQLiteDatabase db = dbDatabaseHelper.getWritableDatabase();
         long newRowId = -1;
-
         db.beginTransaction();
         try {
             ContentValues movieValues = new ContentValues();
@@ -77,15 +76,14 @@ public class MovieRepository {
 
             db.setTransactionSuccessful();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e("Movie Repository", Objects.requireNonNull(e.getMessage()));
         } finally {
             db.endTransaction();
             db.close();
         }
-        return newRowId;
     }
 
-    public int deleteFavMovie(int userId, int movieId) {
+    public void deleteFavMovie(int userId, int movieId) {
         SQLiteDatabase db = dbDatabaseHelper.getWritableDatabase();
         db.beginTransaction();
         int deletedRows = 0;
@@ -109,13 +107,12 @@ public class MovieRepository {
             cursor.close();
             db.setTransactionSuccessful();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e("Movie Repository", Objects.requireNonNull(e.getMessage()));
         } finally {
             db.endTransaction();
             db.close();
         }
 
-        return deletedRows;
     }
     public List<Movie> getFavMoviesByUserId(int userId) {
         SQLiteDatabase db = dbDatabaseHelper.getReadableDatabase();
@@ -139,6 +136,7 @@ public class MovieRepository {
                 String overview = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_OVERVIEW));
 
                 Movie movie = new Movie(movieId, title, rating, image, isAdult, releaseDate, overview);
+                movie.setFav(true);
                 favMovies.add(movie);
             } while (cursor.moveToNext());
         }
@@ -148,4 +146,41 @@ public class MovieRepository {
 
         return favMovies;
     }
+
+    public List<Movie> getFavMoviesByKeyword(int userId, String keyword) {
+        List<Movie> movieList = new ArrayList<>();
+        SQLiteDatabase db = dbDatabaseHelper.getReadableDatabase();
+        String sql = "SELECT f." + DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_ID + ", "
+                + "f." + DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_TITLE + ", "
+                + "f." + DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_RATING + ", "
+                + "f." + DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_ADULT + ", "
+                + "f." + DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_IMAGE + ", "
+                + "f." + DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_OVERVIEW + ", "
+                + "f." + DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_RELEASE
+                + " FROM " + DatabaseHelper.FavMovieEntry.MOVIE_TABLE_NAME + " f"
+                + " JOIN " + DatabaseHelper.FavMoviesUsersEntry.TABLE_NAME + " fu"
+                + " ON f." + DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_ID + " = fu." + DatabaseHelper.FavMoviesUsersEntry.COLUMN_MOVIE_ID
+                + " WHERE fu." + DatabaseHelper.FavMoviesUsersEntry.COLUMN_USER_ID + " = ?"
+                + " AND f." + DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_TITLE + " LIKE ?";
+
+        Cursor cursor = db.rawQuery(sql, new String[] { String.valueOf(userId), "%" + keyword + "%" });
+        if (cursor.moveToFirst()) {
+            do {
+                int movieId = cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_ID));
+                String title = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_TITLE));
+                float rating = cursor.getFloat(cursor.getColumnIndexOrThrow(DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_RATING));
+                int isAdult = cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_ADULT));
+                String image = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_IMAGE));
+                String overview = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_OVERVIEW));
+                String releaseDate = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_RELEASE));
+                Movie movie = new Movie(movieId, title, rating, image, isAdult == 1, releaseDate, overview);
+                movie.setFav(true);
+                movieList.add(movie);
+            } while (cursor.moveToNext());
+        }
+        cursor.close();
+        db.close();
+        return movieList;
+    }
+
 }

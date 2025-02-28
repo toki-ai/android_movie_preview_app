@@ -39,6 +39,10 @@ public class ListMoviesFragment extends Fragment implements OnUpdateMovieListLis
     private MovieAdapter movieAdapter;
     private boolean isGrid = false;
     private MovieApiService movieApiService;
+    private boolean isLoading = false;
+    private int currentPage = 1;
+    private int totalPages = 1;
+    private String currentFetchType = TYPE_POPULAR;
 
     @Nullable
     @Override
@@ -52,9 +56,23 @@ public class ListMoviesFragment extends Fragment implements OnUpdateMovieListLis
         updateLayoutManager();
 
         movieApiService = ApiClient.getClient().create(MovieApiService.class);
-        fetchMovies(1, TYPE_POPULAR);
-
+        fetchMovies(currentPage, currentFetchType);
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
+                super.onScrolled(rv, dx, dy);
+                if (!rv.canScrollVertically(1)) {
+                    if (!isLoading && currentPage < totalPages) {
+                        loadNextPage();
+                    }
+                }
+            }
+        });
         return view;
+    }
+    private void loadNextPage() {
+        currentPage++;
+        fetchMovies(currentPage, currentFetchType);
     }
 
     private void updateLayoutManager() {
@@ -62,6 +80,8 @@ public class ListMoviesFragment extends Fragment implements OnUpdateMovieListLis
     }
 
     private void fetchMovies(int page, String fetchType) {
+        isLoading = true;
+        movieAdapter.addLoadingFooter();
         Call<MovieResponse> call;
         switch(fetchType) {
             case TYPE_POPULAR:
@@ -77,7 +97,7 @@ public class ListMoviesFragment extends Fragment implements OnUpdateMovieListLis
                 call = movieApiService.getTopRatedMovies(API_KEY, page);
                 break;
             default:
-                return;
+                call = null;
         }
         if (call == null) {
             return;
@@ -85,15 +105,27 @@ public class ListMoviesFragment extends Fragment implements OnUpdateMovieListLis
         call.enqueue(new Callback<>() {
             @Override
             public void onResponse(@NonNull Call<MovieResponse> call, @NonNull Response<MovieResponse> response) {
+                movieAdapter.removeLoadingFooter();
+                isLoading = false;
                 if (response.isSuccessful() && response.body() != null) {
-                    List<Movie> movies = response.body().getMovies();
-                    movieAdapter.updateMovies(movies);
+                    MovieResponse movieResponse = response.body();
+                    List<Movie> newMovies = movieResponse.getMovies();
+                    if (page == 1) {
+                        movieAdapter.updateMovies(newMovies);
+                    } else {
+                        movieAdapter.addMovies(newMovies, page);
+                    }
+                    totalPages = movieResponse.getTotalPages();
                 } else {
                     Toast.makeText(requireContext(), "Failed to load movies", Toast.LENGTH_SHORT).show();
                 }
             }
+
             @Override
-            public void onFailure(@NonNull Call<MovieResponse> call, @NonNull Throwable t) {
+            public void onFailure(@NonNull Call<MovieResponse> call,
+                                  @NonNull Throwable t) {
+                movieAdapter.removeLoadingFooter();
+                isLoading = false;
                 Toast.makeText(requireContext(), "Network error", Toast.LENGTH_SHORT).show();
             }
         });
@@ -109,7 +141,10 @@ public class ListMoviesFragment extends Fragment implements OnUpdateMovieListLis
 
     @Override
     public void onToolbarOpsClick(String type) {
-        fetchMovies(1, type);
+        currentFetchType = type;
+        currentPage = 1;
+        movieAdapter.updateMovies(new ArrayList<>());
+        fetchMovies(currentPage, currentFetchType);
     }
 
     @Override

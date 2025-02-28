@@ -9,7 +9,7 @@ import com.example.mockproject.entities.User;
 
 public class UserRepository {
 
-    private DatabaseHelper databaseHelper;
+    private final DatabaseHelper databaseHelper;
 
     public UserRepository(Context context){
         this.databaseHelper = new DatabaseHelper(context);
@@ -117,5 +117,4 @@ public class UserRepository {
         db.close();
         return rowsDeleted;
     }
-
 }

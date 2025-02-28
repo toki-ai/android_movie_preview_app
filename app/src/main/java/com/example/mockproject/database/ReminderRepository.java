@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ReminderRepository {
-    private DatabaseHelper databaseHelper;
+    private final DatabaseHelper databaseHelper;
 
     public ReminderRepository(Context context){
         this.databaseHelper = new DatabaseHelper(context);
@@ -20,11 +20,9 @@ public class ReminderRepository {
 
     public boolean handleSetReminder(int userId, int movieId, String time){
         if (isMovieReminderExists(userId, movieId)){
-            if (updateReminderByMovieAndUser(userId, movieId, time) > 0) return true;
-            return false;
+            return updateReminderByMovieAndUser(userId, movieId, time) > 0;
         }else{
-            if(addReminder(userId, movieId, time) > 0) return true;
-            return false;
+            return addReminder(userId, movieId, time) > 0;
         }
     }
 

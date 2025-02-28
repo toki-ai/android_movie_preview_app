@@ -15,6 +15,7 @@ import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.RadioButton;
@@ -32,11 +33,15 @@ import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
+
+import com.example.mockproject.database.MovieRepository;
 import com.example.mockproject.database.UserRepository;
+import com.example.mockproject.entities.Movie;
 import com.example.mockproject.entities.User;
 import com.example.mockproject.fragment.AboutFragment;
 import com.example.mockproject.fragment.FavoriteFragment;
 import com.example.mockproject.fragment.ListMoviesFragment;
+import com.example.mockproject.fragment.MovieDetailFragment;
 import com.example.mockproject.fragment.SettingsFragment;
 import com.example.mockproject.fragment.adapter.MovieAdapter;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -44,6 +49,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.navigation.NavigationView;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.List;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity implements OnLoginRequestListener, OnUpdateStarFavoriteListener {
@@ -53,7 +59,8 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
     private OnUpdateFavoriteListListener onUpdateFavListListener;
     private UserRepository userRepository;
     private boolean isGrid = false;
-    private ImageButton toolbarIconList, toolbarOptionsMenu;
+    private FrameLayout detailFrameContainer, frameContainer;
+    private ImageButton toolbarIconList, toolbarOptionsMenu, toolbarSearch, toolbarBack, toolbarBurger;
     private ImageView profileAvatar;
     private TextView profileUsername, profileEmail, profileBirthday, btnEdit, btnLogout, btnCancel, btnSave;
     private RadioButton isMale, isFemale;
@@ -63,6 +70,9 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
     private static final int REQUEST_CAMERA_PERMISSION = 100;
+    private boolean isSearching = false;
+    private EditText toolbarSearchInput;
+    private TextView toolbarTitle;
 
     private final ActivityResultLauncher<Intent> cameraLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -104,6 +114,9 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         setContentView(R.layout.activity_main);
         sharedPreferences = getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
         userRepository = new UserRepository(MainActivity.this);
+        detailFrameContainer = findViewById(R.id.detail_frame_container);
+        frameContainer = findViewById(R.id.frame_container);
+
         setUpToolbar();
         setUpEagerFavoriteFragment();
         setUpDrawer();
@@ -147,34 +160,29 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
 
     private void setUpBottomNavAndVisibleToolbar() {
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_nav);
-        TextView toolbarTitle = findViewById(R.id.toolbar_title);
         currentFragment = new ListMoviesFragment();
         getSupportFragmentManager().beginTransaction()
                 .add(R.id.frame_container, currentFragment, "Movies")
                 .commit();
         setOnUpdateMovieListListener((OnUpdateMovieListListener) currentFragment);
         bottomNavigationView.setOnItemSelectedListener(item -> {
+            setDetailDisplay(false);
             Fragment selectedFragment = null;
             String title = "Movies";
             boolean isVisibleIconList = true;
             boolean isVisibleOpsMenu = true;
+            boolean isVisibleSearch = false;
+
             int itemId = item.getItemId();
             if (itemId == R.id.nav_home) {
                 selectedFragment = getOrCreateFragment(ListMoviesFragment.class, "Movies");
                 title = "Movies";
-                toolbarIconList.setImageResource(R.drawable.icon_toolbar_grid);
             } else if (itemId == R.id.nav_favorite) {
-                selectedFragment = getSupportFragmentManager().findFragmentByTag("Favorites");
-                if (selectedFragment == null) {
-                    selectedFragment = new FavoriteFragment();
-                    getSupportFragmentManager().beginTransaction()
-                            .add(R.id.frame_container, selectedFragment, "Favorites")
-                            .hide(currentFragment)
-                            .commit();
-                }
+                selectedFragment = getOrCreateFragment(FavoriteFragment.class, "Favorites");
                 title = "Favorites";
+                isVisibleIconList = false;
                 isVisibleOpsMenu = false;
-                toolbarIconList.setImageResource(R.drawable.icon_toolbar_search);
+                isVisibleSearch = true;
             } else if (itemId == R.id.nav_setting) {
                 selectedFragment = getOrCreateFragment(SettingsFragment.class, "Settings");
                 title = "Settings";
@@ -186,14 +194,19 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
                 isVisibleIconList = false;
                 isVisibleOpsMenu = false;
             }
+
             if (selectedFragment != null) {
                 switchFragment(selectedFragment);
                 toolbarTitle.setText(title);
+                toolbarSearchInput.setVisibility(isVisibleSearch ? View.VISIBLE : View.GONE);
+                toolbarTitle.setVisibility(!isVisibleSearch ? View.VISIBLE : View.GONE);
+                toolbarSearch.setVisibility(isVisibleSearch ? View.VISIBLE : View.GONE);
                 toolbarIconList.setVisibility(isVisibleIconList ? View.VISIBLE : View.GONE);
                 toolbarOptionsMenu.setVisibility(isVisibleOpsMenu ? View.VISIBLE : View.GONE);
             }
             return true;
         });
+
     }
 
     private Fragment getOrCreateFragment(Class<? extends Fragment> fragmentClass, String tag) {
@@ -222,10 +235,45 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         Objects.requireNonNull(getSupportActionBar()).setDisplayShowTitleEnabled(false);
+
+        toolbarTitle = findViewById(R.id.toolbar_title);
+        toolbarSearchInput = findViewById(R.id.toolbar_search_input);
+        toolbarSearch = findViewById(R.id.toolbar_icon_search);
         toolbarIconList = findViewById(R.id.toolbar_icon_list);
         toolbarOptionsMenu = findViewById(R.id.toolbar_icon_more);
+        toolbarBack = findViewById(R.id.toolbar_icon_back);
+        toolbarBurger = findViewById(R.id.toolbar_icon_burger);
+
         setUpToolbarOptionsMenu();
         setUpToolbarIconList();
+
+        toolbarSearch.setOnClickListener(view -> {
+            if (!isSearching) {
+                isSearching = true;
+                toolbarTitle.setVisibility(View.GONE);
+                toolbarSearchInput.setText("");
+                toolbarSearchInput.setVisibility(View.VISIBLE);
+                toolbarSearchInput.requestFocus();
+            } else {
+                String keyword = toolbarSearchInput.getText().toString().trim();
+                doSearchFavorites(keyword);
+            }
+        });
+    }
+    private void doSearchFavorites(String keyword) {
+        String userIdStr = sharedPreferences.getString(USER_ID, "");
+        if (userIdStr.isEmpty()) {
+            return;
+        }
+        int userId = Integer.parseInt(userIdStr);
+
+        MovieRepository repo = new MovieRepository(this);
+        List<Movie> searchResults = repo.getFavMoviesByKeyword(userId, keyword);
+
+        Fragment current = getSupportFragmentManager().findFragmentByTag("Favorites");
+        if (current instanceof FavoriteFragment) {
+            ((FavoriteFragment) current).showSearchResults(searchResults);
+        }
     }
 
     private void setUpToolbarIconList() {
@@ -268,7 +316,6 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
 
     private void setUpDrawer() {
         drawerLayout = findViewById(R.id.drawer_layout);
-        ImageButton btnToggle = findViewById(R.id.toolbar_icon_burger);
         navigationView = findViewById(R.id.drawer_nav);
         navigationView.removeHeaderView(navigationView.getHeaderView(0));
         String userId = sharedPreferences.getString(USER_ID, "");
@@ -282,7 +329,7 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         } else {
             loadDrawerData(headerView, userId);
         }
-        btnToggle.setOnClickListener(view -> {
+        toolbarBurger.setOnClickListener(view -> {
             if (drawerLayout.isDrawerOpen(navigationView)) {
                 drawerLayout.closeDrawer(navigationView);
             } else {
@@ -305,6 +352,9 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         EditText inputEmail = bottomSheetDialog.findViewById(R.id.login_email);
         EditText inputUsername = bottomSheetDialog.findViewById(R.id.login_username);
         TextView btnSignIn = bottomSheetDialog.findViewById(R.id.login_submit);
+        if(btnSignIn == null){
+            return;
+        }
         btnSignIn.setOnClickListener(v -> {
             String email = (inputEmail != null ? inputEmail.getText().toString().trim() : "");
             String username = (inputUsername != null ? inputUsername.getText().toString().trim() : "");
@@ -450,6 +500,37 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
     public void onLoginRequested() {
         showBottomDialog(MainActivity.this);
     }
+
+    public void setDetailDisplay(boolean isDisplay){
+        detailFrameContainer.setVisibility(isDisplay ? View.VISIBLE : View.GONE);
+        toolbarBack.setVisibility(isDisplay ? View.VISIBLE : View.GONE);
+
+        frameContainer.setVisibility(isDisplay ? View.GONE : View.VISIBLE);
+        toolbarBurger.setVisibility(isDisplay ? View.GONE : View.VISIBLE);
+    }
+
+    public void openDetailFragment(int movieId, String movieTitle) {
+        setDetailDisplay(true);
+
+        MovieDetailFragment detailFragment = MovieDetailFragment.newInstance(movieId, movieTitle);
+
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.detail_frame_container, detailFragment, "MovieDetail")
+                .addToBackStack("Detail")
+                .commit();
+        toolbarTitle.setText(movieTitle);
+
+        toolbarBack.setOnClickListener(v -> {
+            setDetailDisplay(false);
+            if (currentFragment instanceof ListMoviesFragment){
+                toolbarTitle.setText("Movies");
+            }else if (currentFragment instanceof FavoriteFragment){
+                toolbarTitle.setText("Favorites");
+            }
+        });
+    }
+
+
 
     @Override
     public void onUpdateStartFavorite(int movieId, MovieAdapter.TYPE type) {
