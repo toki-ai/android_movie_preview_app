@@ -1,6 +1,9 @@
 package com.example.mockproject.fragment;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,6 +17,7 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.mockproject.MainActivity;
 import com.example.mockproject.OnUpdateMovieListListener;
 import com.example.mockproject.R;
 import com.example.mockproject.api.ApiClient;
@@ -24,6 +28,7 @@ import com.example.mockproject.fragment.adapter.MovieAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -43,6 +48,8 @@ public class ListMoviesFragment extends Fragment implements OnUpdateMovieListLis
     private int currentPage = 1;
     private int totalPages = 1;
     private String currentFetchType = TYPE_POPULAR;
+    private SharedPreferences prefs;
+    private SharedPreferences.OnSharedPreferenceChangeListener prefListener;
 
     @Nullable
     @Override
@@ -56,7 +63,7 @@ public class ListMoviesFragment extends Fragment implements OnUpdateMovieListLis
         updateLayoutManager();
 
         movieApiService = ApiClient.getClient().create(MovieApiService.class);
-        fetchMovies(currentPage, currentFetchType);
+        fetchMovies(currentPage); //currentFetchType
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
@@ -68,62 +75,101 @@ public class ListMoviesFragment extends Fragment implements OnUpdateMovieListLis
                 }
             }
         });
+        prefs = requireContext().getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
+
+        prefListener = (sharedPreferences, key) -> {
+            if (key.equals(SettingsFragment.KEY_MOVIE_TYPE) || key.equals(SettingsFragment.KEY_RATING_FILTER) || key.equals(SettingsFragment.KEY_RELEASE_YEAR_FILTER) || key.equals(SettingsFragment.KEY_SORT_OPTION)) {
+                currentPage = 1;
+                movieAdapter.updateMovies(new ArrayList<>());
+                fetchMovies(currentPage);
+            }
+        };
+
+        prefs.registerOnSharedPreferenceChangeListener(prefListener);
         return view;
     }
     private void loadNextPage() {
         currentPage++;
-        fetchMovies(currentPage, currentFetchType);
+        fetchMovies(currentPage); //currentFetchType
     }
 
     private void updateLayoutManager() {
         recyclerView.setLayoutManager(isGrid ? new GridLayoutManager(getContext(), 2) : new LinearLayoutManager(getContext()));
     }
 
-    private void fetchMovies(int page, String fetchType) {
+    private void fetchMovies(int page) {
         isLoading = true;
         movieAdapter.addLoadingFooter();
+
+        SharedPreferences sharedPreferences = requireContext().getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
+
+        String movieType = sharedPreferences.getString(SettingsFragment.KEY_MOVIE_TYPE, "Popular Movies");
         Call<MovieResponse> call;
-        switch(fetchType) {
-            case TYPE_POPULAR:
-                call = movieApiService.getPopularMovies(API_KEY, page);
-                break;
-            case TYPE_UPCOMING:
-                call = movieApiService.getUpcomingMovies(API_KEY, page);
-                break;
-            case TYPE_NOW_PLAYING:
-                call = movieApiService.getNowPlayingMovies(API_KEY, page);
-                break;
-            case TYPE_TOP_RATED:
+        switch (movieType) {
+            case "Top Rated Movies":
                 call = movieApiService.getTopRatedMovies(API_KEY, page);
                 break;
+            case "Upcoming Movies":
+                call = movieApiService.getUpcomingMovies(API_KEY, page);
+                break;
+            case "Now Playing Movies":
+                call = movieApiService.getNowPlayingMovies(API_KEY, page);
+                break;
+            case "Popular Movies":
             default:
-                call = null;
+                Log.d("TAGTAG", "HIIII");
+                call = movieApiService.getPopularMovies(API_KEY, page);
+                break;
         }
-        if (call == null) {
-            return;
-        }
+
         call.enqueue(new Callback<>() {
             @Override
             public void onResponse(@NonNull Call<MovieResponse> call, @NonNull Response<MovieResponse> response) {
                 movieAdapter.removeLoadingFooter();
+                Log.d("TAGTAG", "BYEE");
                 isLoading = false;
                 if (response.isSuccessful() && response.body() != null) {
-                    MovieResponse movieResponse = response.body();
-                    List<Movie> newMovies = movieResponse.getMovies();
+                    List<Movie> newMovies = response.body().getMovies();
+
+                    float minRating = sharedPreferences.getFloat(SettingsFragment.KEY_RATING_FILTER, 0f);
+                    if (minRating > 0f) {
+                        newMovies = newMovies.stream()
+                                .filter(m -> Float.parseFloat(m.getRating()) >= minRating)
+                                .collect(Collectors.toList());
+                    }
+
+                    int minYear = sharedPreferences.getInt(SettingsFragment.KEY_RELEASE_YEAR_FILTER, 1970);
+                    newMovies = newMovies.stream()
+                            .filter(m -> {
+                                try {
+                                    int movieYear = Integer.parseInt(m.getReleaseDate().substring(0, 4));
+                                    return movieYear >= minYear;
+                                } catch (Exception e) {
+                                    return false;
+                                }
+                            })
+                            .collect(Collectors.toList());
+
+                    String sortOption = sharedPreferences.getString(SettingsFragment.KEY_SORT_OPTION, "Release Date Descending");
+                    if ("Rating Descending".equals(sortOption)) {
+                        newMovies.sort((m1, m2) -> Float.compare(Float.parseFloat(m2.getRating()), Float.parseFloat(m1.getRating())));
+                    } else {
+                        newMovies.sort((m1, m2) -> m2.getReleaseDate().compareTo(m1.getReleaseDate()));
+                    }
+
                     if (page == 1) {
                         movieAdapter.updateMovies(newMovies);
                     } else {
                         movieAdapter.addMovies(newMovies, page);
                     }
-                    totalPages = movieResponse.getTotalPages();
+                    totalPages = response.body().getTotalPages();
                 } else {
                     Toast.makeText(requireContext(), "Failed to load movies", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
-            public void onFailure(@NonNull Call<MovieResponse> call,
-                                  @NonNull Throwable t) {
+            public void onFailure(@NonNull Call<MovieResponse> call, @NonNull Throwable t) {
                 movieAdapter.removeLoadingFooter();
                 isLoading = false;
                 Toast.makeText(requireContext(), "Network error", Toast.LENGTH_SHORT).show();
@@ -144,11 +190,17 @@ public class ListMoviesFragment extends Fragment implements OnUpdateMovieListLis
         currentFetchType = type;
         currentPage = 1;
         movieAdapter.updateMovies(new ArrayList<>());
-        fetchMovies(currentPage, currentFetchType);
+        fetchMovies(currentPage); //currentFetchType
     }
 
     @Override
     public void onUpdateItemStarFav(int movieId) {
         movieAdapter.updateItemFavStar(movieId);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        prefs.unregisterOnSharedPreferenceChangeListener(prefListener);
     }
 }
