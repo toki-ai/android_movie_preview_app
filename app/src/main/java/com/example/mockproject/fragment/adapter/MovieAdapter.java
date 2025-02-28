@@ -14,7 +14,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mockproject.MainActivity;
-import com.example.mockproject.OnUpdateStarFavoriteListener;
+import com.example.mockproject.callback.OnUpdateStarFavoriteListener;
 import com.example.mockproject.R;
 import com.example.mockproject.database.MovieRepository;
 import com.example.mockproject.entities.Movie;
@@ -131,8 +131,7 @@ public class MovieAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                                 notifyItemRemoved(indexToRemove);
                             }
                     }
-                    movieRepository.handleClickFavMovie(movie);
-                    onUpdateStarFavoriteListener.onUpdateStartFavorite(movie.getId(), type);
+                    onUpdateStarFavoriteListener.onUpdateStartFavorite(movie, type);
                 });
             }
             movieHolder.itemView.setOnClickListener(v -> {

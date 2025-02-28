@@ -34,6 +34,10 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
+import com.example.mockproject.callback.OnLoginRequestListener;
+import com.example.mockproject.callback.OnUpdateFavoriteListListener;
+import com.example.mockproject.callback.OnUpdateMovieListListener;
+import com.example.mockproject.callback.OnUpdateStarFavoriteListener;
 import com.example.mockproject.database.MovieRepository;
 import com.example.mockproject.database.UserRepository;
 import com.example.mockproject.entities.Movie;
@@ -58,46 +62,21 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
     private OnUpdateMovieListListener onUpdateMovieListListener;
     private OnUpdateFavoriteListListener onUpdateFavListListener;
     private UserRepository userRepository;
-    private boolean isGrid = false;
+    private MovieRepository movieRepository;
+    private SharedPreferences sharedPreferences;
     private FrameLayout detailFrameContainer, frameContainer;
     private ImageButton toolbarIconList, toolbarOptionsMenu, toolbarSearch, toolbarBack, toolbarBurger;
     private ImageView profileAvatar;
-    private TextView profileUsername, profileEmail, profileBirthday, btnEdit, btnLogout, btnCancel, btnSave;
+    private TextView profileUsername, profileEmail, profileBirthday, toolbarTitle, btnEdit, btnLogout, btnCancel, btnSave;
+    private EditText toolbarSearchInput;
     private RadioButton isMale, isFemale;
-    private SharedPreferences sharedPreferences;
-    public static final String USER_ID = "user_id";
-    public static final String SHARE_KEY = "mock_prj";
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
-    private static final int REQUEST_CAMERA_PERMISSION = 100;
+    public static final String USER_ID = "user_id";
+    public static final String SHARE_KEY = "mock_prj";
     private boolean isSearching = false;
-    private EditText toolbarSearchInput;
-    private TextView toolbarTitle;
-
-    private final ActivityResultLauncher<Intent> cameraLauncher =
-            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                    Bitmap bitmap = (Bitmap) Objects.requireNonNull(result.getData().getExtras()).get("data");
-                    if (bitmap != null) {
-                        profileAvatar.setImageBitmap(bitmap);
-                    }
-                }
-            });
-
-    private final ActivityResultLauncher<Intent> galleryLauncher =
-            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                    try {
-                        Bitmap bitmap = MediaStore.Images.Media.getBitmap(
-                                getContentResolver(),
-                                result.getData().getData()
-                        );
-                        profileAvatar.setImageBitmap(bitmap);
-                    } catch (IOException e) {
-                        Log.e("MainActivity", Objects.requireNonNull(e.getMessage()));
-                    }
-                }
-            });
+    private boolean isGrid = false;
+    private enum FRAGMENT_TAG { MOVIE, FAVORITE, SETTING, ABOUT }
 
     public void setOnUpdateMovieListListener(OnUpdateMovieListListener listener) {
         this.onUpdateMovieListListener = listener;
@@ -112,8 +91,12 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
-        sharedPreferences = getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
+
         userRepository = new UserRepository(MainActivity.this);
+        movieRepository = new MovieRepository(MainActivity.this);
+
+        sharedPreferences = getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
+
         detailFrameContainer = findViewById(R.id.detail_frame_container);
         frameContainer = findViewById(R.id.frame_container);
 
@@ -121,22 +104,14 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         setUpEagerFavoriteFragment();
         setUpDrawer();
         setUpBottomNavAndVisibleToolbar();
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(
-                    this,
-                    new String[]{Manifest.permission.CAMERA},
-                    REQUEST_CAMERA_PERMISSION
-            );
-        }
     }
 
     private void setUpEagerFavoriteFragment() {
-        FavoriteFragment favoriteFragment =
-                (FavoriteFragment) getSupportFragmentManager().findFragmentByTag("Favorites");
+        FavoriteFragment favoriteFragment = (FavoriteFragment) getSupportFragmentManager().findFragmentByTag(String.valueOf(FRAGMENT_TAG.FAVORITE));
         if (favoriteFragment == null) {
             favoriteFragment = new FavoriteFragment();
             getSupportFragmentManager().beginTransaction()
-                    .add(R.id.frame_container, favoriteFragment, "Favorites")
+                    .add(R.id.frame_container, favoriteFragment, String.valueOf(FRAGMENT_TAG.FAVORITE))
                     .hide(favoriteFragment)
                     .commit();
         }
@@ -148,7 +123,7 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
                                            @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_CAMERA_PERMISSION) {
+        if (requestCode == 100) {
             if (grantResults.length > 0
                     && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "Camera permission granted!", Toast.LENGTH_SHORT).show();
@@ -162,34 +137,35 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_nav);
         currentFragment = new ListMoviesFragment();
         getSupportFragmentManager().beginTransaction()
-                .add(R.id.frame_container, currentFragment, "Movies")
+                .add(R.id.frame_container, currentFragment, String.valueOf(FRAGMENT_TAG.MOVIE))
                 .commit();
         setOnUpdateMovieListListener((OnUpdateMovieListListener) currentFragment);
+
         bottomNavigationView.setOnItemSelectedListener(item -> {
             setDetailDisplay(false);
             Fragment selectedFragment = null;
-            String title = "Movies";
+            String title = String.valueOf(FRAGMENT_TAG.MOVIE);
             boolean isVisibleIconList = true;
             boolean isVisibleOpsMenu = true;
             boolean isVisibleSearch = false;
 
             int itemId = item.getItemId();
             if (itemId == R.id.nav_home) {
-                selectedFragment = getOrCreateFragment(ListMoviesFragment.class, "Movies");
+                selectedFragment = getOrCreateFragment(ListMoviesFragment.class, String.valueOf(FRAGMENT_TAG.MOVIE));
                 title = "Movies";
             } else if (itemId == R.id.nav_favorite) {
-                selectedFragment = getOrCreateFragment(FavoriteFragment.class, "Favorites");
+                selectedFragment = getOrCreateFragment(FavoriteFragment.class, String.valueOf(FRAGMENT_TAG.FAVORITE));
                 title = "Favorites";
                 isVisibleIconList = false;
                 isVisibleOpsMenu = false;
                 isVisibleSearch = true;
             } else if (itemId == R.id.nav_setting) {
-                selectedFragment = getOrCreateFragment(SettingsFragment.class, "Settings");
+                selectedFragment = getOrCreateFragment(SettingsFragment.class, String.valueOf(FRAGMENT_TAG.SETTING));
                 title = "Settings";
                 isVisibleIconList = false;
                 isVisibleOpsMenu = false;
             } else if (itemId == R.id.nav_about) {
-                selectedFragment = getOrCreateFragment(AboutFragment.class, "About");
+                selectedFragment = getOrCreateFragment(AboutFragment.class, String.valueOf(FRAGMENT_TAG.ABOUT));
                 title = "About";
                 isVisibleIconList = false;
                 isVisibleOpsMenu = false;
@@ -315,6 +291,14 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
     }
 
     private void setUpDrawer() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.CAMERA},
+                    100
+            );
+        }
+
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.drawer_nav);
         navigationView.removeHeaderView(navigationView.getHeaderView(0));
@@ -533,15 +517,40 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
 
 
     @Override
-    public void onUpdateStartFavorite(int movieId, MovieAdapter.TYPE type) {
+    public void onUpdateStartFavorite(Movie movie, MovieAdapter.TYPE type) {
+        movieRepository.handleClickFavMovie(movie);
         if (type.equals(MovieAdapter.TYPE.LIST)) {
             if (onUpdateFavListListener != null) {
                 onUpdateFavListListener.onUpdateFavoriteList();
             }
         } else if (type.equals(MovieAdapter.TYPE.FAV)) {
             if (onUpdateMovieListListener != null) {
-                onUpdateMovieListListener.onUpdateItemStarFav(movieId);
+                onUpdateMovieListListener.onUpdateItemStarFav(movie.getId());
             }
         }
     }
+    private final ActivityResultLauncher<Intent> cameraLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    Bitmap bitmap = (Bitmap) Objects.requireNonNull(result.getData().getExtras()).get("data");
+                    if (bitmap != null) {
+                        profileAvatar.setImageBitmap(bitmap);
+                    }
+                }
+            });
+
+    private final ActivityResultLauncher<Intent> galleryLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    try {
+                        Bitmap bitmap = MediaStore.Images.Media.getBitmap(
+                                getContentResolver(),
+                                result.getData().getData()
+                        );
+                        profileAvatar.setImageBitmap(bitmap);
+                    } catch (IOException e) {
+                        Log.e("MainActivity", Objects.requireNonNull(e.getMessage()));
+                    }
+                }
+            });
 }

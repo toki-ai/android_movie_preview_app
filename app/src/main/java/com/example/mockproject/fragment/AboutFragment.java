@@ -33,7 +33,7 @@ public class AboutFragment extends Fragment {
         webSettings.setJavaScriptEnabled(true);
 
         webView.setWebViewClient(new WebViewClient());
-        webView.loadUrl("https://www.themoviedb.org/");
+        webView.loadUrl("https://www.themoviedb.org/about");
         return view;
     }
 }

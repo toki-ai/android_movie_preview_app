@@ -1,27 +1,48 @@
 package com.example.mockproject.fragment;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
+import android.app.AlarmManager;
+import android.app.DatePickerDialog;
+import android.app.PendingIntent;
+import android.app.TimePickerDialog;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.widget.Toast;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
+import com.example.mockproject.MainActivity;
 import com.example.mockproject.R;
 import com.example.mockproject.api.ApiClient;
 import com.example.mockproject.api.MovieApiService;
+import com.example.mockproject.database.ReminderRepository;
 import com.example.mockproject.entities.CreditResponse;
 import com.example.mockproject.entities.Movie;
+import com.example.mockproject.entities.Reminder;
 import com.example.mockproject.fragment.adapter.CastAdapter;
+import com.example.mockproject.receiver.ReminderReceiver;
 import com.squareup.picasso.Picasso;
+
+import java.util.Calendar;
+import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -37,10 +58,10 @@ public class MovieDetailFragment extends Fragment {
     private String movieTitle;
     private ImageView detailPoster, detailBtnFav;
     private TextView detailReleaseDate, detailRating, detailOverview;
-    private TextView detailBtnReminder;
-    private RecyclerView detailCrewList;
+    private androidx.recyclerview.widget.RecyclerView detailCrewList;
 
     private MovieApiService movieApiService;
+    private Calendar selectedTime;
 
     public static MovieDetailFragment newInstance(int movieId, String movieTitle) {
         MovieDetailFragment fragment = new MovieDetailFragment();
@@ -76,7 +97,7 @@ public class MovieDetailFragment extends Fragment {
                               @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         detailPoster = view.findViewById(R.id.detail_poster);
-        detailBtnReminder = view.findViewById(R.id.detail_btn_reminder);
+        TextView detailBtnReminder = view.findViewById(R.id.detail_btn_reminder);
         detailBtnFav = view.findViewById(R.id.detail_btn_fav);
         detailReleaseDate = view.findViewById(R.id.detail_releaseDate);
         detailRating = view.findViewById(R.id.detail_rating);
@@ -90,20 +111,103 @@ public class MovieDetailFragment extends Fragment {
         fetchMovieDetails(movieId);
         fetchCrewAndCast(movieId);
 
-        detailBtnReminder.setOnClickListener(v -> {
-            Toast.makeText(getContext(),
-                    "Reminder set for " + movieTitle,
-                    Toast.LENGTH_SHORT
-            ).show();
-        });
+        detailBtnReminder.setOnClickListener(v -> requestNotificationPermissionIfNeeded());
 
-        detailBtnFav.setOnClickListener(v -> {
-            detailBtnFav.setImageResource(R.drawable.icon_movie_star);
-        });
+        detailBtnFav.setOnClickListener(v -> detailBtnFav.setImageResource(R.drawable.icon_movie_star));
+    }
+
+    private final ActivityResultLauncher<String> requestNotificationPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    setAlarmAndShowNotification();
+                } else {
+                    Toast.makeText(requireContext(),
+                            "Notification permission is required for reminders",
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(requireContext(),
+                        Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+        } else {
+            setAlarmAndShowNotification();
+        }
+    }
+
+    private void setAlarmAndShowNotification() {
+        SharedPreferences sharedPreferences = requireActivity().getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
+        String userIdStr = sharedPreferences.getString(MainActivity.USER_ID, "0");
+        int userId = Integer.parseInt(userIdStr);
+        if (userId == 0) {
+            Toast.makeText(getContext(), "Need permission to set reminder", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        ReminderRepository reminderRepository = new ReminderRepository(getContext());
+        List<Reminder> reminders = reminderRepository.getRemindersByUser(userId);
+        if (reminders.size() >= 10) {
+            Toast.makeText(getContext(), "Only storage maximum 10 reminder", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Calendar now = Calendar.getInstance();
+        DatePickerDialog datePicker = new DatePickerDialog(
+                requireContext(),
+                (view, year, month, dayOfMonth) -> {
+                    TimePickerDialog timePicker = new TimePickerDialog(
+                            requireContext(),
+                            (timeView, hourOfDay, minute) -> {
+                                selectedTime = Calendar.getInstance();
+                                selectedTime.set(year, month, dayOfMonth, hourOfDay, minute, 0);
+                                long timeInMillis = selectedTime.getTimeInMillis();
+
+                                AlarmManager alarmManager = (AlarmManager) requireContext().getSystemService(Context.ALARM_SERVICE);
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                                    Toast.makeText(getContext(), "Please turn on exact alarms on Settings", Toast.LENGTH_LONG).show();
+                                    Intent intent = new Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+                                    startActivity(intent);
+                                    return;
+                                }
+
+                                long reminderId = reminderRepository.addReminder(userId, movieId, String.valueOf(timeInMillis));
+                                if (reminderId > 0) {
+                                    Intent intent = new Intent(getContext(), ReminderReceiver.class);
+                                    intent.putExtra("MOVIE_TITLE", movieTitle);
+                                    intent.putExtra("MOVIE_ID", movieId);
+                                    intent.putExtra("reminder_time", timeInMillis);
+
+                                    PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                                            getContext(),
+                                            (int) reminderId,
+                                            intent,
+                                            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                                    );
+                                    if (alarmManager != null) {
+                                        alarmManager.setExact(AlarmManager.RTC_WAKEUP, timeInMillis, pendingIntent);
+                                    }
+                                    Toast.makeText(getContext(), "Reminder set!", Toast.LENGTH_SHORT).show();
+                                } else {
+                                    Toast.makeText(getContext(), "Fail to set reminder", Toast.LENGTH_SHORT).show();
+                                }
+                            },
+                            now.get(Calendar.HOUR_OF_DAY),
+                            now.get(Calendar.MINUTE),
+                            true
+                    );
+                    timePicker.show();
+                },
+                now.get(Calendar.YEAR),
+                now.get(Calendar.MONTH),
+                now.get(Calendar.DAY_OF_MONTH)
+        );
+        datePicker.show();
     }
 
     private void fetchMovieDetails(int movieId) {
-        movieApiService.getMovieDetail(movieId, API_KEY).enqueue(new Callback<Movie>() {
+        movieApiService.getMovieDetail(movieId, API_KEY).enqueue(new Callback<>() {
             @Override
             public void onResponse(@NonNull Call<Movie> call,
                                    @NonNull Response<Movie> response) {
@@ -123,6 +227,7 @@ public class MovieDetailFragment extends Fragment {
         });
     }
 
+    @SuppressLint("SetTextI18n")
     private void bindMovieData(Movie movie) {
         if (!TextUtils.isEmpty(movie.getPosterUrl())) {
             Picasso.get().load(movie.getPosterUrl()).into(detailPoster);
@@ -130,14 +235,14 @@ public class MovieDetailFragment extends Fragment {
         detailReleaseDate.setText(!TextUtils.isEmpty(movie.getReleaseDate())
                 ? movie.getReleaseDate()
                 : "N/A");
-        detailRating.setText(String.valueOf(movie.getRating()) + "/10.0");
+        detailRating.setText(movie.getRating() + "/10.0");
         detailOverview.setText(!TextUtils.isEmpty(movie.getOverview())
                 ? movie.getOverview()
                 : "No overview available");
     }
 
     private void fetchCrewAndCast(int movieId) {
-        movieApiService.getMovieCrewAndCast(movieId, API_KEY).enqueue(new Callback<CreditResponse>() {
+        movieApiService.getMovieCrewAndCast(movieId, API_KEY).enqueue(new Callback<>() {
             @Override
             public void onResponse(@NonNull Call<CreditResponse> call,
                                    @NonNull Response<CreditResponse> response) {

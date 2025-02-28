@@ -18,7 +18,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mockproject.MainActivity;
-import com.example.mockproject.OnUpdateMovieListListener;
+import com.example.mockproject.callback.OnUpdateMovieListListener;
 import com.example.mockproject.R;
 import com.example.mockproject.api.ApiClient;
 import com.example.mockproject.api.MovieApiService;

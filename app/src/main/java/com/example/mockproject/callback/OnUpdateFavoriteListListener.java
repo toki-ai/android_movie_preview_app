@@ -1,4 +1,4 @@
-package com.example.mockproject;
+package com.example.mockproject.callback;
 
 public interface OnUpdateFavoriteListListener {
     void onUpdateFavoriteList();

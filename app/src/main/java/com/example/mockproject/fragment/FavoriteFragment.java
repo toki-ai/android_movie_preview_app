@@ -17,8 +17,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.mockproject.MainActivity;
-import com.example.mockproject.OnLoginRequestListener;
-import com.example.mockproject.OnUpdateFavoriteListListener;
+import com.example.mockproject.callback.OnLoginRequestListener;
+import com.example.mockproject.callback.OnUpdateFavoriteListListener;
 import com.example.mockproject.R;
 import com.example.mockproject.database.MovieRepository;
 import com.example.mockproject.entities.Movie;
