@@ -18,41 +18,33 @@ public class ReminderRepository {
         this.databaseHelper = new DatabaseHelper(context);
     }
 
-    public boolean handleSetReminder(int userId, int movieId, String time){
-        if (isMovieReminderExists(userId, movieId)){
-            return updateReminderByMovieAndUser(userId, movieId, time) > 0;
-        }else{
-            return addReminder(userId, movieId, time) > 0;
+    public boolean setOrUpdateReminder(int userId, int movieId, String time) {
+        SQLiteDatabase db = databaseHelper.getWritableDatabase();
+        String query = "SELECT " + DatabaseHelper.ReminderEntry.REMINDER_COLUMN_ID +
+                " FROM " + DatabaseHelper.ReminderEntry.REMINDER_TABLE_NAME +
+                " WHERE user_id = ? AND movie_id = ?";
+        Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(userId), String.valueOf(movieId)});
+        boolean success;
+        if (cursor.moveToFirst()) {
+            int reminderId = cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseHelper.ReminderEntry.REMINDER_COLUMN_ID));
+            ContentValues values = new ContentValues();
+            values.put(DatabaseHelper.ReminderEntry.REMINDER_COLUMN_TIME, time);
+            int rowsUpdated = db.update(DatabaseHelper.ReminderEntry.REMINDER_TABLE_NAME,
+                    values,
+                    DatabaseHelper.ReminderEntry.REMINDER_COLUMN_ID + " = ?",
+                    new String[]{String.valueOf(reminderId)});
+            success = rowsUpdated > 0;
+        } else {
+            ContentValues values = new ContentValues();
+            values.put(DatabaseHelper.ReminderEntry.REMINDER_COLUMN_TIME, time);
+            values.put(DatabaseHelper.ReminderEntry.REMINDER_COLUMN_USER_ID, userId);
+            values.put(DatabaseHelper.ReminderEntry.REMINDER_COLUMN_MOVIE_ID, movieId);
+            long id = db.insert(DatabaseHelper.ReminderEntry.REMINDER_TABLE_NAME, null, values);
+            success = id > 0;
         }
-    }
-
-    public long addReminder(int userId, int movieId, String time) {
-        SQLiteDatabase db = databaseHelper.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put(DatabaseHelper.ReminderEntry.REMINDER_COLUMN_TIME, time);
-        values.put("user_id", userId);
-        values.put("movie_id", movieId);
-
-        long reminderId = db.insert(DatabaseHelper.ReminderEntry.REMINDER_TABLE_NAME, null, values);
+        cursor.close();
         db.close();
-        return reminderId;
-    }
-
-    public int updateReminderByMovieAndUser(int userId, int movieId, String newTime) {
-        SQLiteDatabase db = databaseHelper.getWritableDatabase();
-        ContentValues values = new ContentValues();
-
-        values.put(DatabaseHelper.ReminderEntry.REMINDER_COLUMN_TIME, newTime);
-
-        int rowsUpdated = db.update(
-                DatabaseHelper.ReminderEntry.REMINDER_TABLE_NAME,
-                values,
-                "user_id = ? AND movie_id = ?",
-                new String[]{String.valueOf(userId), String.valueOf(movieId)}
-        );
-
-        db.close();
-        return rowsUpdated;
+        return success;
     }
 
     public int deleteReminder(int reminderId) {
@@ -99,17 +91,4 @@ public class ReminderRepository {
         db.close();
         return reminders;
     }
-
-    public boolean isMovieReminderExists(int userId, int movieId) {
-        SQLiteDatabase db = databaseHelper.getReadableDatabase();
-        String query = "SELECT 1 FROM " + DatabaseHelper.ReminderEntry.REMINDER_TABLE_NAME +
-                " WHERE user_id = ? AND movie_id = ?";
-        Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(userId), String.valueOf(movieId)});
-
-        boolean exists = cursor.moveToFirst();
-        cursor.close();
-        db.close();
-        return exists;
-    }
-
 }

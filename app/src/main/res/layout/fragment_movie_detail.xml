@@ -41,7 +41,16 @@
         android:src="@drawable/icon_movie_start_outline"
         app:layout_constraintStart_toEndOf="@+id/detail_poster"
         app:layout_constraintTop_toTopOf="@+id/detail_poster" />
-
+    <ImageView
+        android:id="@+id/detail_adult_icon"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_marginTop="8dp"
+        android:src="@drawable/icon_18"
+        android:layout_marginLeft="30dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/detail_poster"
+        app:layout_constraintStart_toEndOf="@id/detail_btn_fav"/>
     <TextView
         android:id="@+id/detail_release_heading"
         android:layout_width="wrap_content"

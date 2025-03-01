@@ -1,6 +1,7 @@
 package com.example.mockproject;
 
 import android.Manifest;
+import android.app.DatePickerDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -33,14 +34,18 @@ import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mockproject.callback.OnLoginRequestListener;
 import com.example.mockproject.callback.OnUpdateFavoriteListListener;
 import com.example.mockproject.callback.OnUpdateMovieListListener;
 import com.example.mockproject.callback.OnUpdateStarFavoriteListener;
 import com.example.mockproject.database.MovieRepository;
+import com.example.mockproject.database.ReminderRepository;
 import com.example.mockproject.database.UserRepository;
 import com.example.mockproject.entities.Movie;
+import com.example.mockproject.entities.Reminder;
 import com.example.mockproject.entities.User;
 import com.example.mockproject.fragment.AboutFragment;
 import com.example.mockproject.fragment.FavoriteFragment;
@@ -48,11 +53,13 @@ import com.example.mockproject.fragment.ListMoviesFragment;
 import com.example.mockproject.fragment.MovieDetailFragment;
 import com.example.mockproject.fragment.SettingsFragment;
 import com.example.mockproject.fragment.adapter.MovieAdapter;
+import com.example.mockproject.fragment.adapter.ReminderAdapter;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.navigation.NavigationView;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Objects;
 
@@ -271,6 +278,7 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
             popup.setOnMenuItemClickListener(item -> {
                 if (onUpdateMovieListListener == null) return false;
                 int itemId = item.getItemId();
+
                 if (itemId == R.id.op_menu_nowPlaying) {
                     onUpdateMovieListListener.onToolbarOpsClick(ListMoviesFragment.TYPE_NOW_PLAYING);
                     return true;
@@ -391,6 +399,26 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
                 Log.e("MainActivity", Objects.requireNonNull(e.getMessage()));
             }
         }
+        TextView btnShowReminder = headerView.findViewById(R.id.reminder_btn_show);
+        btnShowReminder.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, ReminderActivity.class);
+            startActivity(intent);
+        });
+
+        RecyclerView reminderRecycler = headerView.findViewById(R.id.reminder_short_list);
+        reminderRecycler.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
+
+        ReminderRepository reminderRepository = new ReminderRepository(this);
+        List<Reminder> allReminders = reminderRepository.getRemindersByUser(Integer.parseInt(userId));
+        List<Reminder> shortList;
+        if (allReminders.size() > 3) {
+            shortList = allReminders.subList(0, 3);
+        } else {
+            shortList = allReminders;
+        }
+        ReminderAdapter reminderAdapter = new ReminderAdapter(this, shortList, null);
+        reminderRecycler.setAdapter(reminderAdapter);
+
         btnLogout.setOnClickListener(v -> {
             sharedPreferences.edit().remove(USER_ID).apply();
             Toast.makeText(MainActivity.this, "Logout successfully!", Toast.LENGTH_SHORT).show();
@@ -423,8 +451,21 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         btnCancel.setVisibility(isEdit ? View.VISIBLE : View.GONE);
         if (isEdit) {
             profileAvatar.setOnClickListener(v -> showMediaPopup());
+            profileBirthday.setOnClickListener(v -> {
+                Calendar calendar = Calendar.getInstance();
+                DatePickerDialog datePickerDialog = new DatePickerDialog(MainActivity.this,
+                        (view, year, month, dayOfMonth) -> {
+                            String selectedDate = dayOfMonth + "/" + (month + 1) + "/" + year;
+                            profileBirthday.setText(selectedDate);
+                        },
+                        calendar.get(Calendar.YEAR),
+                        calendar.get(Calendar.MONTH),
+                        calendar.get(Calendar.DAY_OF_MONTH));
+                datePickerDialog.show();
+            });
         } else {
             profileAvatar.setOnClickListener(null);
+            profileBirthday.setOnClickListener(null);
         }
     }
 

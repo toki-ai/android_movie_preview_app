@@ -3,6 +3,7 @@ package com.example.mockproject;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -31,11 +32,13 @@ public class ReminderActivity extends AppCompatActivity implements OnReminderDel
         SharedPreferences sharedPreferences = getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
         userId = Integer.parseInt(sharedPreferences.getString(MainActivity.USER_ID, "0"));
         reminderRepository = new ReminderRepository(this);
-
+        ImageButton btnBack = findViewById(R.id.reminder_toolbar_icon_back);
         RecyclerView recyclerView = findViewById(R.id.reminder_recycler);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-
+        btnBack.setOnClickListener(v->{
+            finish();
+        });
         reminderList = reminderRepository.getRemindersByUser(userId);
         if (reminderList == null) {
             reminderList = new ArrayList<>();

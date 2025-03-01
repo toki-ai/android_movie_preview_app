@@ -6,6 +6,7 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Build;
@@ -15,6 +16,10 @@ import androidx.core.app.NotificationCompat;
 import com.example.mockproject.MainActivity;
 import com.example.mockproject.R;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
 public class ReminderReceiver extends BroadcastReceiver {
 
     private static final String CHANNEL_ID = "movie_reminder_channel";
@@ -22,13 +27,23 @@ public class ReminderReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        SharedPreferences prefs = context.getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
+        int currentUserId = Integer.parseInt(prefs.getString(MainActivity.USER_ID, "0"));
+        int reminderUserId = intent.getIntExtra("USER_ID", 0);
+        if (currentUserId != reminderUserId) {
+            return;
+        }
         String movieTitle = intent.getStringExtra("MOVIE_TITLE");
-        String releaseYear = intent.getStringExtra("MOVIE_YEAR");
-        String rating = intent.getStringExtra("MOVIE_RATING");
+        long reminderTime = intent.getLongExtra("reminder_time", 0);
+        String movieRating = intent.getStringExtra("MOVIE_RATING");
+        String movieYear = intent.getStringExtra("MOVIE_YEAR");
 
-        String content = "";
-        if (releaseYear != null && rating != null) {
-            content = "Year: " + releaseYear + "   Rate: " + rating + "/10";
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+        String formattedTime = sdf.format(new Date(reminderTime));
+
+        String content = "Time: " + formattedTime;
+        if (movieYear != null && movieRating != null) {
+            content += " | Year: " + movieYear + " | Rate: " + movieRating;
         }
 
         createNotificationChannel(context);
@@ -46,7 +61,7 @@ public class ReminderReceiver extends BroadcastReceiver {
                 .setSmallIcon(R.drawable.icon_film)
                 .setLargeIcon(largeIcon)
                 .setContentTitle(movieTitle != null ? movieTitle : "Movie Reminder")
-                .setContentText("abcdef")
+                .setContentText(content)
                 .setContentIntent(contentPendingIntent)
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH);

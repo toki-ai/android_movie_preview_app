@@ -56,7 +56,7 @@ public class MovieDetailFragment extends Fragment {
 
     private int movieId;
     private String movieTitle;
-    private ImageView detailPoster, detailBtnFav;
+    private ImageView detailPoster, detailBtnFav, detailAdultIcon;
     private TextView detailReleaseDate, detailRating, detailOverview;
     private androidx.recyclerview.widget.RecyclerView detailCrewList;
 
@@ -103,6 +103,7 @@ public class MovieDetailFragment extends Fragment {
         detailRating = view.findViewById(R.id.detail_rating);
         detailOverview = view.findViewById(R.id.detail_overview);
         detailCrewList = view.findViewById(R.id.detail_crew_list);
+        detailAdultIcon = view.findViewById(R.id.detail_adult_icon);
 
         detailCrewList.setLayoutManager(
                 new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false)
@@ -149,7 +150,7 @@ public class MovieDetailFragment extends Fragment {
         ReminderRepository reminderRepository = new ReminderRepository(getContext());
         List<Reminder> reminders = reminderRepository.getRemindersByUser(userId);
         if (reminders.size() >= 10) {
-            Toast.makeText(getContext(), "Only storage maximum 10 reminder", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Only storage maximum 10 reminders", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -172,16 +173,19 @@ public class MovieDetailFragment extends Fragment {
                                     return;
                                 }
 
-                                long reminderId = reminderRepository.addReminder(userId, movieId, String.valueOf(timeInMillis));
-                                if (reminderId > 0) {
+                                boolean reminderSuccess = reminderRepository.setOrUpdateReminder(userId, movieId, String.valueOf(timeInMillis));
+                                if (reminderSuccess) {
                                     Intent intent = new Intent(getContext(), ReminderReceiver.class);
                                     intent.putExtra("MOVIE_TITLE", movieTitle);
-                                    intent.putExtra("MOVIE_ID", movieId);
                                     intent.putExtra("reminder_time", timeInMillis);
+                                    intent.putExtra("MOVIE_RATING", detailRating.getText().toString());
+                                    String releaseDate = detailReleaseDate.getText().toString();
+                                    intent.putExtra("MOVIE_YEAR", releaseDate.length() >= 4 ? releaseDate.substring(0, 4) : "N/A");
+                                    intent.putExtra("USER_ID", userId);
 
                                     PendingIntent pendingIntent = PendingIntent.getBroadcast(
                                             getContext(),
-                                            (int) reminderId,
+                                            movieId,
                                             intent,
                                             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
                                     );
@@ -239,6 +243,13 @@ public class MovieDetailFragment extends Fragment {
         detailOverview.setText(!TextUtils.isEmpty(movie.getOverview())
                 ? movie.getOverview()
                 : "No overview available");
+
+        if (movie.getIsAdultMovie()) {
+            detailAdultIcon.setVisibility(View.VISIBLE);
+            detailAdultIcon.setImageResource(R.drawable.icon_18);
+        } else {
+            detailAdultIcon.setVisibility(View.GONE);
+        }
     }
 
     private void fetchCrewAndCast(int movieId) {

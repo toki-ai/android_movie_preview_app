@@ -13,6 +13,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.mockproject.MainActivity;
 import com.example.mockproject.callback.OnReminderDeleteListener;
 import com.example.mockproject.R;
 import com.example.mockproject.entities.Reminder;
@@ -26,8 +27,6 @@ public class ReminderAdapter extends RecyclerView.Adapter<ReminderAdapter.Remind
     private List<Reminder> reminders;
     private Context context;
     private OnReminderDeleteListener onReminderDeleteListener;
-
-
 
     public ReminderAdapter(Context context, List<Reminder> reminders, OnReminderDeleteListener listener) {
         this.context = context;
@@ -65,8 +64,14 @@ public class ReminderAdapter extends RecyclerView.Adapter<ReminderAdapter.Remind
 
         holder.btnDelete.setOnClickListener(v -> {
             if (onReminderDeleteListener != null) {
-                cancelAlarm(reminder.getId());
+                cancelAlarm(reminder.getId(), reminder.getMovie().getId());
                 onReminderDeleteListener.onReminderDeleted(reminder.getId());
+            }
+        });
+
+        holder.itemView.setOnClickListener(v -> {
+            if (context instanceof MainActivity) {
+                ((MainActivity) context).openDetailFragment(reminder.getMovie().getId(), reminder.getMovie().getTitle());
             }
         });
     }
@@ -76,11 +81,13 @@ public class ReminderAdapter extends RecyclerView.Adapter<ReminderAdapter.Remind
         return reminders.size();
     }
 
-    private void cancelAlarm(int reminderId) {
+    private void cancelAlarm(int reminderId, int movieId) {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(context, ReminderReceiver.class);
+
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                context, reminderId, intent, PendingIntent.FLAG_UPDATE_CURRENT
+                context, movieId, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT
         );
 
         if (alarmManager != null) {
