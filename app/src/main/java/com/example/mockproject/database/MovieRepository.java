@@ -1,5 +1,8 @@
 package com.example.mockproject.database;
 
+import static com.example.mockproject.Constants.SHARE_KEY;
+import static com.example.mockproject.Constants.USER_ID;
+
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -7,7 +10,6 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
-import com.example.mockproject.MainActivity;
 import com.example.mockproject.entities.Movie;
 
 import java.util.ArrayList;
@@ -20,11 +22,11 @@ public class MovieRepository {
 
     public MovieRepository(Context context) {
         dbDatabaseHelper = new DatabaseHelper(context);
-        sharedPreferences = context.getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
+        sharedPreferences = context.getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
     }
 
     public void handleClickFavMovie(Movie movie) {
-        String userId = sharedPreferences.getString(MainActivity.USER_ID, "");
+        String userId = sharedPreferences.getString(USER_ID, "");
         if (userId.isEmpty()) {
             return;
         }
@@ -51,7 +53,6 @@ public class MovieRepository {
 
     public void addNewFavMovie(int userId, Movie movie) {
         SQLiteDatabase db = dbDatabaseHelper.getWritableDatabase();
-        long newRowId = -1;
         db.beginTransaction();
         try {
             ContentValues movieValues = new ContentValues();
@@ -63,7 +64,7 @@ public class MovieRepository {
             movieValues.put(DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_RELEASE, movie.getReleaseDate());
             movieValues.put(DatabaseHelper.FavMovieEntry.MOVIE_COLUMN_OVERVIEW, movie.getOverview());
 
-            newRowId = db.insertWithOnConflict(DatabaseHelper.FavMovieEntry.MOVIE_TABLE_NAME,
+            db.insertWithOnConflict(DatabaseHelper.FavMovieEntry.MOVIE_TABLE_NAME,
                     null,
                     movieValues,
                     SQLiteDatabase.CONFLICT_IGNORE);
@@ -86,10 +87,9 @@ public class MovieRepository {
     public void deleteFavMovie(int userId, int movieId) {
         SQLiteDatabase db = dbDatabaseHelper.getWritableDatabase();
         db.beginTransaction();
-        int deletedRows = 0;
 
         try {
-            deletedRows = db.delete(DatabaseHelper.FavMoviesUsersEntry.TABLE_NAME,
+            db.delete(DatabaseHelper.FavMoviesUsersEntry.TABLE_NAME,
                     DatabaseHelper.FavMoviesUsersEntry.COLUMN_USER_ID + " = ? AND " +
                             DatabaseHelper.FavMoviesUsersEntry.COLUMN_MOVIE_ID + " = ?",
                     new String[]{String.valueOf(userId), String.valueOf(movieId)});

@@ -1,5 +1,8 @@
 package com.example.mockproject.fragment.adapter;
 
+import static com.example.mockproject.Constants.SHARE_KEY;
+import static com.example.mockproject.Constants.USER_ID;
+
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -14,7 +17,6 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mockproject.MainActivity;
-import com.example.mockproject.callback.OnUpdateStarFavoriteListener;
 import com.example.mockproject.R;
 import com.example.mockproject.database.MovieRepository;
 import com.example.mockproject.entities.Movie;
@@ -28,13 +30,12 @@ public class MovieAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     private final boolean isGrid;
     private final MovieRepository movieRepository;
     private final SharedPreferences sharedPreferences;
-    private final OnUpdateStarFavoriteListener onUpdateStarFavoriteListener;
     private boolean isLoadingAdded = false;
     private static final int VIEW_TYPE_ITEM = 0;
     private static final int VIEW_TYPE_LOADING = 1;
     private static final int PAGE_SIZE = 20;
     private final TYPE type;
-    private Context context;
+    private final Context context;
 
     public enum TYPE {
         LIST, FAV
@@ -44,8 +45,7 @@ public class MovieAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         this.movies = movies;
         this.isGrid = isGrid;
         this.movieRepository = new MovieRepository(context);
-        this.sharedPreferences = context.getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
-        this.onUpdateStarFavoriteListener = (OnUpdateStarFavoriteListener) context;
+        this.sharedPreferences = context.getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
         this.context = context;
         this.type = type;
     }
@@ -91,7 +91,7 @@ public class MovieAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             movieHolder.title.setText(movie.getTitle());
             Picasso.get().load(movie.getPosterUrl()).into(movieHolder.image);
 
-            String userId = sharedPreferences.getString(MainActivity.USER_ID, "");
+            String userId = sharedPreferences.getString(USER_ID, "");
 
             if (isGrid) {
                 movieHolder.rating.setVisibility(View.GONE);
@@ -131,7 +131,9 @@ public class MovieAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                                 notifyItemRemoved(indexToRemove);
                             }
                     }
-                    onUpdateStarFavoriteListener.onUpdateStartFavorite(movie, type);
+                    if (context instanceof MainActivity) {
+                        ((MainActivity) context).updateFavoriteListDirectly(movie, type);
+                    }
                 });
             }
             movieHolder.itemView.setOnClickListener(v -> {

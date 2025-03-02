@@ -1,5 +1,7 @@
 package com.example.mockproject.entities;
 
+import android.annotation.SuppressLint;
+
 import com.google.gson.annotations.SerializedName;
 
 public class Movie {
@@ -61,6 +63,7 @@ public class Movie {
         return isAdultMovie;
     }
 
+    @SuppressLint("DefaultLocale")
     public String getRating() {
         return String.format("%.1f", rating);
     }

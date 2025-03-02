@@ -108,13 +108,4 @@ public class UserRepository {
         db.close();
         return rowsUpdated;
     }
-
-    public int deleteUser(int userId) {
-        SQLiteDatabase db = databaseHelper.getWritableDatabase();
-        int rowsDeleted = db.delete(DatabaseHelper.UserEntry.USER_TABLE_NAME,
-                DatabaseHelper.UserEntry.USER_COLUMN_ID + " = ?",
-                new String[]{String.valueOf(userId)});
-        db.close();
-        return rowsDeleted;
-    }
 }

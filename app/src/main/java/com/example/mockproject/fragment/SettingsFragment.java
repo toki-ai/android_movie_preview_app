@@ -1,5 +1,17 @@
 package com.example.mockproject.fragment;
 
+import static com.example.mockproject.Constants.KEY_MOVIE_TYPE;
+import static com.example.mockproject.Constants.KEY_RATING_FILTER;
+import static com.example.mockproject.Constants.KEY_RELEASE_YEAR_FILTER;
+import static com.example.mockproject.Constants.KEY_SORT_OPTION;
+import static com.example.mockproject.Constants.SHARE_KEY;
+import static com.example.mockproject.Constants.SORT_RATING;
+import static com.example.mockproject.Constants.SORT_RELEASE_DATE;
+import static com.example.mockproject.Constants.TYPE_NOW_PLAYING;
+import static com.example.mockproject.Constants.TYPE_POPULAR;
+import static com.example.mockproject.Constants.TYPE_TOP_RATED;
+import static com.example.mockproject.Constants.TYPE_UPCOMING;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -20,17 +32,6 @@ import com.example.mockproject.MainActivity;
 import com.example.mockproject.R;
 
 public class SettingsFragment extends Fragment {
-    public static final String KEY_MOVIE_TYPE = "movie_type";
-    public static final String KEY_RATING_FILTER = "rating_filter";
-    public static final String KEY_RELEASE_YEAR_FILTER = "release_year_filter";
-    public static final String KEY_SORT_OPTION = "sort_option";
-    private static final String FILTER_POPULAR = "Popular Movies";
-    private static final String FILTER_TOP_RATED = "Top Rated Movies";
-    private static final String FILTER_UPCOMING = "Upcoming Movies";
-    private static final String FILTER_NOW_PLAYING = "Now Playing Movies";
-
-    private static final String SORT_RELEASE_DATE = "Release Date Descending";
-    private static final String SORT_RATING = "Rating Descending";
 
     private RadioGroup radioGroupFilter, radioGroupSort;
     private SeekBar seekBarRating, seekBarYear;
@@ -44,7 +45,7 @@ public class SettingsFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_settings, container, false);
 
-        sharedPreferences = requireActivity().getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
+        sharedPreferences = requireActivity().getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
 
         radioGroupFilter = view.findViewById(R.id.detail_radio_filter_type);
         RadioButton radioPopular = view.findViewById(R.id.radio_popular);
@@ -62,18 +63,18 @@ public class SettingsFragment extends Fragment {
         RadioButton radioSortRelease = view.findViewById(R.id.radio_sort_release_date);
         RadioButton radioSortRating = view.findViewById(R.id.radio_sort_rating);
 
-        String savedType = sharedPreferences.getString(KEY_MOVIE_TYPE, FILTER_POPULAR);
+        String savedType = sharedPreferences.getString(KEY_MOVIE_TYPE, TYPE_POPULAR);
         switch (savedType) {
-            case FILTER_TOP_RATED:
+            case TYPE_TOP_RATED:
                 radioTopRated.setChecked(true);
                 break;
-            case FILTER_UPCOMING:
+            case TYPE_UPCOMING:
                 radioUpcoming.setChecked(true);
                 break;
-            case FILTER_NOW_PLAYING:
+            case TYPE_NOW_PLAYING:
                 radioNowPlaying.setChecked(true);
                 break;
-            case FILTER_POPULAR:
+            case TYPE_POPULAR:
             default:
                 radioPopular.setChecked(true);
                 break;
@@ -97,13 +98,13 @@ public class SettingsFragment extends Fragment {
         }
 
         radioGroupFilter.setOnCheckedChangeListener((group, checkedId) -> {
-            String type = FILTER_POPULAR;
+            String type = TYPE_POPULAR;
             if (checkedId == R.id.radio_top_rated) {
-                type = FILTER_TOP_RATED;
+                type = TYPE_TOP_RATED;
             } else if (checkedId == R.id.radio_upcoming) {
-                type = FILTER_UPCOMING;
+                type = TYPE_UPCOMING;
             } else if (checkedId == R.id.radio_now_playing) {
-                type = FILTER_NOW_PLAYING;
+                type = TYPE_NOW_PLAYING;
             }
             sharedPreferences.edit().putString(KEY_MOVIE_TYPE, type).apply();
         });

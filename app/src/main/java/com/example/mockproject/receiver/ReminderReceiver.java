@@ -1,5 +1,8 @@
 package com.example.mockproject.receiver;
 
+import static com.example.mockproject.Constants.SHARE_KEY;
+import static com.example.mockproject.Constants.USER_ID;
+
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -27,8 +30,8 @@ public class ReminderReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        SharedPreferences prefs = context.getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
-        int currentUserId = Integer.parseInt(prefs.getString(MainActivity.USER_ID, "0"));
+        SharedPreferences prefs = context.getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
+        int currentUserId = Integer.parseInt(prefs.getString(USER_ID, "0"));
         int reminderUserId = intent.getIntExtra("USER_ID", 0);
         if (currentUserId != reminderUserId) {
             return;

@@ -1,5 +1,17 @@
 package com.example.mockproject;
 
+import static com.example.mockproject.Constants.FRAGMENT_ABOUT;
+import static com.example.mockproject.Constants.FRAGMENT_FAVORITE;
+import static com.example.mockproject.Constants.FRAGMENT_MOVIE;
+import static com.example.mockproject.Constants.FRAGMENT_SETTING;
+import static com.example.mockproject.Constants.KEY_MOVIE_TYPE;
+import static com.example.mockproject.Constants.SHARE_KEY;
+import static com.example.mockproject.Constants.TYPE_NOW_PLAYING;
+import static com.example.mockproject.Constants.TYPE_POPULAR;
+import static com.example.mockproject.Constants.TYPE_TOP_RATED;
+import static com.example.mockproject.Constants.TYPE_UPCOMING;
+import static com.example.mockproject.Constants.USER_ID;
+
 import android.Manifest;
 import android.app.DatePickerDialog;
 import android.content.Context;
@@ -34,13 +46,12 @@ import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mockproject.callback.OnLoginRequestListener;
 import com.example.mockproject.callback.OnUpdateFavoriteListListener;
-import com.example.mockproject.callback.OnUpdateMovieListListener;
-import com.example.mockproject.callback.OnUpdateStarFavoriteListener;
 import com.example.mockproject.database.MovieRepository;
 import com.example.mockproject.database.ReminderRepository;
 import com.example.mockproject.database.UserRepository;
@@ -63,10 +74,9 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Objects;
 
-public class MainActivity extends AppCompatActivity implements OnLoginRequestListener, OnUpdateStarFavoriteListener {
+public class MainActivity extends AppCompatActivity implements OnLoginRequestListener {
 
     private Fragment currentFragment;
-    private OnUpdateMovieListListener onUpdateMovieListListener;
     private OnUpdateFavoriteListListener onUpdateFavListListener;
     private UserRepository userRepository;
     private MovieRepository movieRepository;
@@ -79,15 +89,8 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
     private RadioButton isMale, isFemale;
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
-    public static final String USER_ID = "user_id";
-    public static final String SHARE_KEY = "mock_prj";
     private boolean isSearching = false;
-    private boolean isGrid = false;
-    private enum FRAGMENT_TAG { MOVIE, FAVORITE, SETTING, ABOUT }
-
-    public void setOnUpdateMovieListListener(OnUpdateMovieListListener listener) {
-        this.onUpdateMovieListListener = listener;
-    }
+    private String logText = "Main Activity";
 
     public void setOnUpdateFavListListener(OnUpdateFavoriteListListener listener) {
         this.onUpdateFavListListener = listener;
@@ -103,22 +106,220 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         movieRepository = new MovieRepository(MainActivity.this);
 
         sharedPreferences = getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
-
+//        SharedPreferences.Editor editor = sharedPreferences.edit();
+//        editor.clear();
+//        editor.apply();
         detailFrameContainer = findViewById(R.id.detail_frame_container);
         frameContainer = findViewById(R.id.frame_container);
 
+        setUpDrawer();
         setUpToolbar();
         setUpEagerFavoriteFragment();
-        setUpDrawer();
         setUpBottomNavAndVisibleToolbar();
     }
 
+    private void setUpDrawer() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.CAMERA},
+                    100
+            );
+        }
+
+        drawerLayout = findViewById(R.id.drawer_layout);
+        navigationView = findViewById(R.id.drawer_nav);
+
+        navigationView.removeHeaderView(navigationView.getHeaderView(0));
+        String userId = sharedPreferences.getString(USER_ID, "");
+        int headerLayout = !userId.isEmpty()
+                ? R.layout.header_drawer_profile
+                : R.layout.header_drawer_guest;
+        View headerView = getLayoutInflater().inflate(headerLayout, navigationView, false);
+        navigationView.addHeaderView(headerView);
+
+        if (userId.isEmpty()) {
+            TextView btnLogin = headerView.findViewById(R.id.profile_btn_login);
+            btnLogin.setOnClickListener(v -> {
+                drawerLayout.closeDrawer(navigationView);
+                showBottomDialog(MainActivity.this);
+            });
+        } else {
+            loadDrawerData(headerView, userId);
+        }
+    }
+
+    private void loadDrawerData(View headerView, String userId) {
+        profileAvatar = headerView.findViewById(R.id.profile_avatar);
+        profileUsername = headerView.findViewById(R.id.profile_name);
+        profileEmail = headerView.findViewById(R.id.profile_mail);
+        profileBirthday = headerView.findViewById(R.id.profile_birthday);
+        isMale = headerView.findViewById(R.id.radio_male);
+        isFemale = headerView.findViewById(R.id.radio_female);
+        btnLogout = headerView.findViewById(R.id.profile_btn_logout);
+        btnEdit = headerView.findViewById(R.id.profile_btn_edit);
+        btnCancel = headerView.findViewById(R.id.profile_btn_cancel);
+        btnSave = headerView.findViewById(R.id.profile_btn_save);
+        TextView btnShowReminder = headerView.findViewById(R.id.reminder_btn_show);
+
+        User account = userRepository.getUserById(Integer.parseInt(userId));
+        profileUsername.setText(account.getName());
+        profileEmail.setText(account.getEmail());
+        if (account.isGender()) {
+            isMale.setChecked(true);
+        } else {
+            isFemale.setChecked(true);
+        }
+        if (account.getBirthday() != null) {
+            profileBirthday.setText(account.getBirthday());
+        }
+        if (account.getImage() != null) {
+            try {
+                byte[] decodedBytes = Base64.decode(account.getImage(), Base64.DEFAULT);
+                Bitmap avatarBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+                profileAvatar.setImageBitmap(avatarBitmap);
+            } catch (Exception e) {
+                Log.e(logText, Objects.requireNonNull(e.getMessage()));
+            }
+        }
+
+        RecyclerView reminderRecycler = headerView.findViewById(R.id.reminder_short_list);
+        reminderRecycler.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
+
+        ReminderRepository reminderRepository = new ReminderRepository(this);
+        List<Reminder> allReminders = reminderRepository.getRemindersByUser(Integer.parseInt(userId));
+        List<Reminder> shortList;
+        if (allReminders.size() > 3) {
+            shortList = allReminders.subList(0, 3);
+        } else {
+            shortList = allReminders;
+        }
+        ReminderAdapter reminderAdapter = new ReminderAdapter(this, shortList);
+        reminderRecycler.addItemDecoration(new DividerItemDecoration(MainActivity.this, DividerItemDecoration.VERTICAL));
+        reminderRecycler.setAdapter(reminderAdapter);
+
+        btnShowReminder.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, ReminderActivity.class);
+            reminderActivityLauncher.launch(intent);
+        });
+
+        btnLogout.setOnClickListener(v -> {
+            sharedPreferences.edit().remove(USER_ID).apply();
+            Toast.makeText(MainActivity.this, "Logout successfully!", Toast.LENGTH_SHORT).show();
+            if (onUpdateFavListListener != null) {
+                onUpdateFavListListener.onUpdateFavoriteUILogin();
+            }
+            setUpDrawer();
+        });
+        btnEdit.setOnClickListener(v -> setProfileEditMode(true));
+        btnCancel.setOnClickListener(v -> {
+            setProfileEditMode(false);
+            loadDrawerData(headerView, userId);
+        });
+        btnSave.setOnClickListener(v -> {
+            saveProfileToDatabase(userId);
+            setProfileEditMode(false);
+            loadDrawerData(headerView, userId);
+        });
+    }
+
+    private void setUpToolbar() {
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        if(getSupportActionBar() == null) return;
+        getSupportActionBar().setDisplayShowTitleEnabled(false);
+
+        toolbarTitle = findViewById(R.id.toolbar_title);
+        toolbarTitle.setVisibility(View.VISIBLE);
+        toolbarSearchInput = findViewById(R.id.toolbar_search_input);
+        toolbarSearchInput.setVisibility(View.GONE);
+        toolbarSearch = findViewById(R.id.toolbar_icon_search);
+        toolbarIconList = findViewById(R.id.toolbar_icon_list);
+        toolbarOptionsMenu = findViewById(R.id.toolbar_icon_more);
+        toolbarBack = findViewById(R.id.toolbar_icon_back);
+        toolbarBurger = findViewById(R.id.toolbar_icon_burger);
+        ImageButton toolbarIconClose = findViewById(R.id.toolbar_icon_close);
+        toolbarIconClose.setVisibility(View.GONE);
+
+        toolbarBurger.setOnClickListener(view -> {
+            if (drawerLayout.isDrawerOpen(navigationView)) {
+                drawerLayout.closeDrawer(navigationView);
+            } else {
+                drawerLayout.openDrawer(navigationView);
+            }
+        });
+
+        toolbarOptionsMenu.setOnClickListener(view -> {
+            PopupMenu popup = new PopupMenu(this, view);
+            popup.getMenuInflater().inflate(R.menu.options_menu, popup.getMenu());
+            popup.setOnMenuItemClickListener(item -> {
+                String selectedType = "";
+                if (item.getItemId() == R.id.op_menu_nowPlaying) {
+                    selectedType = TYPE_NOW_PLAYING;
+                } else if (item.getItemId() == R.id.op_menu_popular) {
+                    selectedType = TYPE_POPULAR;
+                } else if (item.getItemId() == R.id.op_menu_upcoming){
+                    selectedType = TYPE_UPCOMING;
+                } else if(item.getItemId() == R.id.op_menu_topRated){
+                    selectedType = TYPE_TOP_RATED;
+                }
+                if (!selectedType.isEmpty()) {
+                    SharedPreferences prefs = getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
+                    prefs.edit().putString(KEY_MOVIE_TYPE, selectedType).apply();
+
+                    ListMoviesFragment listFragment = (ListMoviesFragment) getOrCreateFragment(ListMoviesFragment.class, FRAGMENT_MOVIE);
+                    if (listFragment != null && listFragment.getView() != null) {
+                        listFragment.setMovieTypeAndRefresh(selectedType);
+                    }
+                    return true;
+                }
+                return false;
+            });
+            popup.show();
+        });
+
+        toolbarIconList.setOnClickListener(v -> {
+            ListMoviesFragment listFragment = (ListMoviesFragment) getSupportFragmentManager()
+                    .findFragmentByTag(FRAGMENT_MOVIE);
+            if (listFragment != null && listFragment.getView() != null) {
+                listFragment.toggleLayout();
+                toolbarIconList.setImageResource(
+                        listFragment.isGrid ? R.drawable.icon_toolbar_list : R.drawable.icon_toolbar_grid
+                );
+            }
+        });
+
+
+        toolbarSearch.setOnClickListener(view -> {
+            if (!isSearching) {
+                isSearching = true;
+                toolbarTitle.setVisibility(View.GONE);
+                toolbarSearchInput.setText("");
+                toolbarSearchInput.setVisibility(View.VISIBLE);
+                toolbarIconClose.setVisibility(View.VISIBLE);
+                toolbarSearchInput.requestFocus();
+            } else {
+                String keyword = toolbarSearchInput.getText().toString().trim();
+                doSearchFavorites(keyword);
+            }
+        });
+
+        toolbarIconClose.setOnClickListener(view -> {
+            isSearching = false;
+            toolbarSearchInput.setText("");
+            toolbarSearchInput.setVisibility(View.GONE);
+            toolbarTitle.setVisibility(View.VISIBLE);
+            toolbarIconClose.setVisibility(View.GONE);
+            doSearchFavorites("");
+        });
+    }
+
     private void setUpEagerFavoriteFragment() {
-        FavoriteFragment favoriteFragment = (FavoriteFragment) getSupportFragmentManager().findFragmentByTag(String.valueOf(FRAGMENT_TAG.FAVORITE));
+        FavoriteFragment favoriteFragment = (FavoriteFragment) getSupportFragmentManager().findFragmentByTag(FRAGMENT_FAVORITE);
         if (favoriteFragment == null) {
             favoriteFragment = new FavoriteFragment();
             getSupportFragmentManager().beginTransaction()
-                    .add(R.id.frame_container, favoriteFragment, String.valueOf(FRAGMENT_TAG.FAVORITE))
+                    .add(R.id.frame_container, favoriteFragment, FRAGMENT_FAVORITE)
                     .hide(favoriteFragment)
                     .commit();
         }
@@ -144,36 +345,35 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_nav);
         currentFragment = new ListMoviesFragment();
         getSupportFragmentManager().beginTransaction()
-                .add(R.id.frame_container, currentFragment, String.valueOf(FRAGMENT_TAG.MOVIE))
+                .add(R.id.frame_container, currentFragment, FRAGMENT_MOVIE)
                 .commit();
-        setOnUpdateMovieListListener((OnUpdateMovieListListener) currentFragment);
 
         bottomNavigationView.setOnItemSelectedListener(item -> {
             setDetailDisplay(false);
             Fragment selectedFragment = null;
-            String title = String.valueOf(FRAGMENT_TAG.MOVIE);
+            String title = FRAGMENT_MOVIE;
             boolean isVisibleIconList = true;
             boolean isVisibleOpsMenu = true;
             boolean isVisibleSearch = false;
 
             int itemId = item.getItemId();
             if (itemId == R.id.nav_home) {
-                selectedFragment = getOrCreateFragment(ListMoviesFragment.class, String.valueOf(FRAGMENT_TAG.MOVIE));
-                title = "Movies";
+                selectedFragment = getOrCreateFragment(ListMoviesFragment.class, FRAGMENT_MOVIE);
+                title = FRAGMENT_MOVIE;
             } else if (itemId == R.id.nav_favorite) {
-                selectedFragment = getOrCreateFragment(FavoriteFragment.class, String.valueOf(FRAGMENT_TAG.FAVORITE));
-                title = "Favorites";
+                selectedFragment = getOrCreateFragment(FavoriteFragment.class, FRAGMENT_FAVORITE);
+                title = FRAGMENT_FAVORITE;
                 isVisibleIconList = false;
                 isVisibleOpsMenu = false;
                 isVisibleSearch = true;
             } else if (itemId == R.id.nav_setting) {
-                selectedFragment = getOrCreateFragment(SettingsFragment.class, String.valueOf(FRAGMENT_TAG.SETTING));
-                title = "Settings";
+                selectedFragment = getOrCreateFragment(SettingsFragment.class, FRAGMENT_SETTING);
+                title = FRAGMENT_SETTING;
                 isVisibleIconList = false;
                 isVisibleOpsMenu = false;
             } else if (itemId == R.id.nav_about) {
-                selectedFragment = getOrCreateFragment(AboutFragment.class, String.valueOf(FRAGMENT_TAG.ABOUT));
-                title = "About";
+                selectedFragment = getOrCreateFragment(AboutFragment.class, FRAGMENT_ABOUT);
+                title = FRAGMENT_ABOUT;
                 isVisibleIconList = false;
                 isVisibleOpsMenu = false;
             }
@@ -181,8 +381,6 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
             if (selectedFragment != null) {
                 switchFragment(selectedFragment);
                 toolbarTitle.setText(title);
-                toolbarSearchInput.setVisibility(isVisibleSearch ? View.VISIBLE : View.GONE);
-                toolbarTitle.setVisibility(!isVisibleSearch ? View.VISIBLE : View.GONE);
                 toolbarSearch.setVisibility(isVisibleSearch ? View.VISIBLE : View.GONE);
                 toolbarIconList.setVisibility(isVisibleIconList ? View.VISIBLE : View.GONE);
                 toolbarOptionsMenu.setVisibility(isVisibleOpsMenu ? View.VISIBLE : View.GONE);
@@ -198,7 +396,7 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
             try {
                 fragment = fragmentClass.newInstance();
             } catch (Exception e) {
-                Log.e("MainActivity", Objects.requireNonNull(e.getMessage()));
+                Log.e(logText, Objects.requireNonNull(e.getMessage()));
             }
         }
         return fragment;
@@ -213,36 +411,6 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         transaction.hide(currentFragment).show(newFragment).commit();
         currentFragment = newFragment;
     }
-
-    private void setUpToolbar() {
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        Objects.requireNonNull(getSupportActionBar()).setDisplayShowTitleEnabled(false);
-
-        toolbarTitle = findViewById(R.id.toolbar_title);
-        toolbarSearchInput = findViewById(R.id.toolbar_search_input);
-        toolbarSearch = findViewById(R.id.toolbar_icon_search);
-        toolbarIconList = findViewById(R.id.toolbar_icon_list);
-        toolbarOptionsMenu = findViewById(R.id.toolbar_icon_more);
-        toolbarBack = findViewById(R.id.toolbar_icon_back);
-        toolbarBurger = findViewById(R.id.toolbar_icon_burger);
-
-        setUpToolbarOptionsMenu();
-        setUpToolbarIconList();
-
-        toolbarSearch.setOnClickListener(view -> {
-            if (!isSearching) {
-                isSearching = true;
-                toolbarTitle.setVisibility(View.GONE);
-                toolbarSearchInput.setText("");
-                toolbarSearchInput.setVisibility(View.VISIBLE);
-                toolbarSearchInput.requestFocus();
-            } else {
-                String keyword = toolbarSearchInput.getText().toString().trim();
-                doSearchFavorites(keyword);
-            }
-        });
-    }
     private void doSearchFavorites(String keyword) {
         String userIdStr = sharedPreferences.getString(USER_ID, "");
         if (userIdStr.isEmpty()) {
@@ -253,89 +421,10 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         MovieRepository repo = new MovieRepository(this);
         List<Movie> searchResults = repo.getFavMoviesByKeyword(userId, keyword);
 
-        Fragment current = getSupportFragmentManager().findFragmentByTag("Favorites");
+        Fragment current = getSupportFragmentManager().findFragmentByTag(FRAGMENT_FAVORITE);
         if (current instanceof FavoriteFragment) {
             ((FavoriteFragment) current).showSearchResults(searchResults);
         }
-    }
-
-    private void setUpToolbarIconList() {
-        toolbarIconList.setOnClickListener(v -> {
-            if (onUpdateMovieListListener != null) {
-                isGrid = !isGrid;
-                onUpdateMovieListListener.onToolbarIconClick();
-                toolbarIconList.setImageResource(isGrid
-                        ? R.drawable.icon_toolbar_list
-                        : R.drawable.icon_toolbar_grid);
-            }
-        });
-    }
-
-    private void setUpToolbarOptionsMenu() {
-        toolbarOptionsMenu.setOnClickListener(view -> {
-            PopupMenu popup = new PopupMenu(this, view);
-            popup.getMenuInflater().inflate(R.menu.options_menu, popup.getMenu());
-            popup.setOnMenuItemClickListener(item -> {
-                if (onUpdateMovieListListener == null) return false;
-                int itemId = item.getItemId();
-
-                if (itemId == R.id.op_menu_nowPlaying) {
-                    onUpdateMovieListListener.onToolbarOpsClick(ListMoviesFragment.TYPE_NOW_PLAYING);
-                    return true;
-                } else if (itemId == R.id.op_menu_popular) {
-                    onUpdateMovieListListener.onToolbarOpsClick(ListMoviesFragment.TYPE_POPULAR);
-                    return true;
-                } else if (itemId == R.id.op_menu_upcoming) {
-                    onUpdateMovieListListener.onToolbarOpsClick(ListMoviesFragment.TYPE_UPCOMING);
-                    return true;
-                } else if (itemId == R.id.op_menu_topRated) {
-                    onUpdateMovieListListener.onToolbarOpsClick(ListMoviesFragment.TYPE_TOP_RATED);
-                    return true;
-                }
-                return false;
-            });
-            popup.show();
-        });
-    }
-
-    private void setUpDrawer() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(
-                    this,
-                    new String[]{Manifest.permission.CAMERA},
-                    100
-            );
-        }
-
-        drawerLayout = findViewById(R.id.drawer_layout);
-        navigationView = findViewById(R.id.drawer_nav);
-        navigationView.removeHeaderView(navigationView.getHeaderView(0));
-        String userId = sharedPreferences.getString(USER_ID, "");
-        int headerLayout = !userId.isEmpty()
-                ? R.layout.header_drawer_profile
-                : R.layout.header_drawer_guest;
-        View headerView = getLayoutInflater().inflate(headerLayout, navigationView, false);
-        navigationView.addHeaderView(headerView);
-        if (userId.isEmpty()) {
-            login(headerView, drawerLayout, navigationView);
-        } else {
-            loadDrawerData(headerView, userId);
-        }
-        toolbarBurger.setOnClickListener(view -> {
-            if (drawerLayout.isDrawerOpen(navigationView)) {
-                drawerLayout.closeDrawer(navigationView);
-            } else {
-                drawerLayout.openDrawer(navigationView);
-            }
-        });
-    }
-
-    private void login(View headerView, DrawerLayout drawerLayout, NavigationView navigationView) {
-        TextView btnLogin = headerView.findViewById(R.id.profile_btn_login);
-        btnLogin.setOnClickListener(v -> {
-            drawerLayout.closeDrawer(navigationView);
-            showBottomDialog(MainActivity.this);
-        });
     }
 
     public void showBottomDialog(Context context) {
@@ -366,77 +455,6 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
             }
         });
         bottomSheetDialog.show();
-    }
-
-    private void loadDrawerData(View headerView, String userId) {
-        profileAvatar = headerView.findViewById(R.id.profile_avatar);
-        profileUsername = headerView.findViewById(R.id.profile_name);
-        profileEmail = headerView.findViewById(R.id.profile_mail);
-        profileBirthday = headerView.findViewById(R.id.profile_birthday);
-        isMale = headerView.findViewById(R.id.radio_male);
-        isFemale = headerView.findViewById(R.id.radio_female);
-        btnLogout = headerView.findViewById(R.id.profile_btn_logout);
-        btnEdit = headerView.findViewById(R.id.profile_btn_edit);
-        btnCancel = headerView.findViewById(R.id.profile_btn_cancel);
-        btnSave = headerView.findViewById(R.id.profile_btn_save);
-        User account = userRepository.getUserById(Integer.parseInt(userId));
-        profileUsername.setText(account.getName());
-        profileEmail.setText(account.getEmail());
-        if (account.isGender()) {
-            isMale.setChecked(true);
-        } else {
-            isFemale.setChecked(true);
-        }
-        if (account.getBirthday() != null) {
-            profileBirthday.setText(account.getBirthday());
-        }
-        if (account.getImage() != null) {
-            try {
-                byte[] decodedBytes = Base64.decode(account.getImage(), Base64.DEFAULT);
-                Bitmap avatarBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
-                profileAvatar.setImageBitmap(avatarBitmap);
-            } catch (Exception e) {
-                Log.e("MainActivity", Objects.requireNonNull(e.getMessage()));
-            }
-        }
-        TextView btnShowReminder = headerView.findViewById(R.id.reminder_btn_show);
-        btnShowReminder.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, ReminderActivity.class);
-            startActivity(intent);
-        });
-
-        RecyclerView reminderRecycler = headerView.findViewById(R.id.reminder_short_list);
-        reminderRecycler.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
-
-        ReminderRepository reminderRepository = new ReminderRepository(this);
-        List<Reminder> allReminders = reminderRepository.getRemindersByUser(Integer.parseInt(userId));
-        List<Reminder> shortList;
-        if (allReminders.size() > 3) {
-            shortList = allReminders.subList(0, 3);
-        } else {
-            shortList = allReminders;
-        }
-        ReminderAdapter reminderAdapter = new ReminderAdapter(this, shortList, null);
-        reminderRecycler.setAdapter(reminderAdapter);
-
-        btnLogout.setOnClickListener(v -> {
-            sharedPreferences.edit().remove(USER_ID).apply();
-            Toast.makeText(MainActivity.this, "Logout successfully!", Toast.LENGTH_SHORT).show();
-            if (onUpdateFavListListener != null) {
-                onUpdateFavListListener.onUpdateFavoriteUILogin();
-            }
-            setUpDrawer();
-        });
-        btnEdit.setOnClickListener(v -> setProfileEditMode(true));
-        btnCancel.setOnClickListener(v -> {
-            setProfileEditMode(false);
-            loadDrawerData(headerView, userId);
-        });
-        btnSave.setOnClickListener(v -> {
-            saveProfileToDatabase(userId);
-            setProfileEditMode(false);
-            loadDrawerData(headerView, userId);
-        });
     }
 
     private void setProfileEditMode(boolean isEdit) {
@@ -487,13 +505,6 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         popupMenu.show();
     }
 
-    public String bitmapToString(Bitmap bitmap) {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
-        byte[] byteArray = byteArrayOutputStream.toByteArray();
-        return Base64.encodeToString(byteArray, Base64.DEFAULT);
-    }
-
     private void saveProfileToDatabase(String userId) {
         String name = profileUsername.getText().toString().trim();
         String email = profileEmail.getText().toString().trim();
@@ -508,7 +519,10 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         if (drawable instanceof BitmapDrawable) {
             Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
             if (bitmap != null) {
-                image = bitmapToString(bitmap);
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+                byte[] byteArray = byteArrayOutputStream.toByteArray();
+                image = Base64.encodeToString(byteArray, Base64.DEFAULT);
             }
         }
         int rowsUpdated = userRepository.updateUserProfile(
@@ -548,28 +562,59 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         toolbarBack.setOnClickListener(v -> {
             setDetailDisplay(false);
             if (currentFragment instanceof ListMoviesFragment){
-                toolbarTitle.setText("Movies");
+                toolbarTitle.setText(FRAGMENT_MOVIE);
             }else if (currentFragment instanceof FavoriteFragment){
-                toolbarTitle.setText("Favorites");
+                toolbarTitle.setText(FRAGMENT_ABOUT);
             }
         });
     }
+    public void reloadDrawerReminders() {
+        View headerView = navigationView.getHeaderView(0);
+        if (headerView != null) {
+            RecyclerView reminderRecycler = headerView.findViewById(R.id.reminder_short_list);
+            ReminderRepository reminderRepository = new ReminderRepository(this);
+            String userIdStr = sharedPreferences.getString(USER_ID, "0");
+            if (userIdStr.isEmpty()) return;
+            int userId = Integer.parseInt(userIdStr);
+            List<Reminder> allReminders = reminderRepository.getRemindersByUser(userId);
+            List<Reminder> shortList = (allReminders.size() > 3) ? allReminders.subList(0, 3) : allReminders;
+            ReminderAdapter reminderAdapter = new ReminderAdapter(this, shortList);
+            reminderRecycler.setAdapter(reminderAdapter);
+        }
+    }
 
 
-
-    @Override
-    public void onUpdateStartFavorite(Movie movie, MovieAdapter.TYPE type) {
-        movieRepository.handleClickFavMovie(movie);
-        if (type.equals(MovieAdapter.TYPE.LIST)) {
-            if (onUpdateFavListListener != null) {
-                onUpdateFavListListener.onUpdateFavoriteList();
+    public void updateFavoriteListDirectly(Movie movie, MovieAdapter.TYPE type) {
+        if(type == null){
+            FavoriteFragment favFragment = (FavoriteFragment) getOrCreateFragment(FavoriteFragment.class, FRAGMENT_FAVORITE);
+            if (favFragment != null) {
+                favFragment.onUpdateFavoriteList();
+            }
+            ListMoviesFragment listFragment = (ListMoviesFragment) getOrCreateFragment(ListMoviesFragment.class, FRAGMENT_MOVIE);
+            if (listFragment != null) {
+                listFragment.updateItemStarFav(movie.getId());
+            }
+        }
+        else if (type.equals(MovieAdapter.TYPE.LIST)) {
+            FavoriteFragment favFragment = (FavoriteFragment) getOrCreateFragment(FavoriteFragment.class, FRAGMENT_FAVORITE);
+            if (favFragment != null) {
+                favFragment.onUpdateFavoriteList();
             }
         } else if (type.equals(MovieAdapter.TYPE.FAV)) {
-            if (onUpdateMovieListListener != null) {
-                onUpdateMovieListListener.onUpdateItemStarFav(movie.getId());
+            ListMoviesFragment listFragment = (ListMoviesFragment) getOrCreateFragment(ListMoviesFragment.class, FRAGMENT_MOVIE);
+            if (listFragment != null) {
+                listFragment.updateItemStarFav(movie.getId());
             }
         }
     }
+
+    private final ActivityResultLauncher<Intent> reminderActivityLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK) {
+                    reloadDrawerReminders();
+                }
+            });
+
     private final ActivityResultLauncher<Intent> cameraLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
@@ -590,7 +635,7 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
                         );
                         profileAvatar.setImageBitmap(bitmap);
                     } catch (IOException e) {
-                        Log.e("MainActivity", Objects.requireNonNull(e.getMessage()));
+                        Log.e(logText, Objects.requireNonNull(e.getMessage()));
                     }
                 }
             });

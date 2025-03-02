@@ -6,7 +6,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.provider.BaseColumns;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
-    private static final int DATABASE_VERSION = 3;
+    private static final int DATABASE_VERSION = 4;
     private static final String DATABASE_NAME = "MockProject.db";
 
     public DatabaseHelper(Context context) {
@@ -46,57 +46,64 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         public static final String REMINDER_COLUMN_TIME = "time";
         public static final String REMINDER_COLUMN_USER_ID = "user_id";
         public static final String REMINDER_COLUMN_MOVIE_ID = "movie_id";
+        public static final String REMINDER_COLUMN_MOVIE_TITLE = "movie_title";
+        public static final String REMINDER_COLUMN_MOVIE_IMAGE = "movie_image";
+        public static final String REMINDER_COLUMN_MOVIE_RATING = "movie_rating";
+        public static final String REMINDER_COLUMN_MOVIE_YEAR = "movie_year";
     }
 
     private static final String QUERY_CREATE_MOVIE_TABLE =
-            "CREATE TABLE " + FavMovieEntry.MOVIE_TABLE_NAME + " ("
-                    + FavMovieEntry.MOVIE_COLUMN_ID + " INTEGER PRIMARY KEY, "
-                    + FavMovieEntry.MOVIE_COLUMN_TITLE + " TEXT NOT NULL, "
-                    + FavMovieEntry.MOVIE_COLUMN_RATING + " REAL NOT NULL, "
-                    + FavMovieEntry.MOVIE_COLUMN_IMAGE + " TEXT NOT NULL, "
-                    + FavMovieEntry.MOVIE_COLUMN_ADULT + " INTEGER NOT NULL, "
-                    + FavMovieEntry.MOVIE_COLUMN_RELEASE + " TEXT NOT NULL, "
-                    + FavMovieEntry.MOVIE_COLUMN_OVERVIEW + " TEXT NOT NULL)";
+            "CREATE TABLE " + FavMovieEntry.MOVIE_TABLE_NAME + " (" +
+                    FavMovieEntry.MOVIE_COLUMN_ID + " INTEGER PRIMARY KEY, " +
+                    FavMovieEntry.MOVIE_COLUMN_TITLE + " TEXT NOT NULL, " +
+                    FavMovieEntry.MOVIE_COLUMN_RATING + " REAL NOT NULL, " +
+                    FavMovieEntry.MOVIE_COLUMN_IMAGE + " TEXT NOT NULL, " +
+                    FavMovieEntry.MOVIE_COLUMN_ADULT + " INTEGER NOT NULL, " +
+                    FavMovieEntry.MOVIE_COLUMN_RELEASE + " TEXT NOT NULL, " +
+                    FavMovieEntry.MOVIE_COLUMN_OVERVIEW + " TEXT NOT NULL)";
 
     private static final String QUERY_DROP_MOVIE_TABLE =
             "DROP TABLE IF EXISTS " + FavMovieEntry.MOVIE_TABLE_NAME;
 
     private static final String QUERY_CREATE_USER_TABLE =
-            "CREATE TABLE " + UserEntry.USER_TABLE_NAME + " ("
-                    + UserEntry.USER_COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
-                    + UserEntry.USER_COLUMN_NAME + " TEXT NOT NULL, "
-                    + UserEntry.USER_COLUMN_BIRTHDAY + " TEXT, "
-                    + UserEntry.USER_COLUMN_EMAIL + " TEXT NOT NULL, "
-                    + UserEntry.USER_COLUMN_IMAGE + " TEXT, "
-                    + UserEntry.USER_COLUMN_GENDER + " INTEGER)";
+            "CREATE TABLE " + UserEntry.USER_TABLE_NAME + " (" +
+                    UserEntry.USER_COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    UserEntry.USER_COLUMN_NAME + " TEXT NOT NULL, " +
+                    UserEntry.USER_COLUMN_BIRTHDAY + " TEXT, " +
+                    UserEntry.USER_COLUMN_EMAIL + " TEXT NOT NULL, " +
+                    UserEntry.USER_COLUMN_IMAGE + " TEXT, " +
+                    UserEntry.USER_COLUMN_GENDER + " INTEGER)";
 
     private static final String QUERY_DROP_USER_TABLE =
             "DROP TABLE IF EXISTS " + UserEntry.USER_TABLE_NAME;
 
     private static final String QUERY_CREATE_MOVIE_USER_TABLE =
-            "CREATE TABLE " + FavMoviesUsersEntry.TABLE_NAME + " ("
-                    + FavMoviesUsersEntry.COLUMN_USER_ID + " INTEGER NOT NULL, "
-                    + FavMoviesUsersEntry.COLUMN_MOVIE_ID + " INTEGER NOT NULL, "
-                    + "FOREIGN KEY(" + FavMoviesUsersEntry.COLUMN_USER_ID + ") REFERENCES "
-                    + UserEntry.USER_TABLE_NAME + "(" + UserEntry.USER_COLUMN_ID + "), "
-                    + "FOREIGN KEY(" + FavMoviesUsersEntry.COLUMN_MOVIE_ID + ") REFERENCES "
-                    + FavMovieEntry.MOVIE_TABLE_NAME + "(" + FavMovieEntry.MOVIE_COLUMN_ID + "), "
-                    + "PRIMARY KEY (" + FavMoviesUsersEntry.COLUMN_USER_ID + ", "
-                    + FavMoviesUsersEntry.COLUMN_MOVIE_ID + "))";
+            "CREATE TABLE " + FavMoviesUsersEntry.TABLE_NAME + " (" +
+                    FavMoviesUsersEntry.COLUMN_USER_ID + " INTEGER NOT NULL, " +
+                    FavMoviesUsersEntry.COLUMN_MOVIE_ID + " INTEGER NOT NULL, " +
+                    "FOREIGN KEY(" + FavMoviesUsersEntry.COLUMN_USER_ID + ") REFERENCES " +
+                    UserEntry.USER_TABLE_NAME + "(" + UserEntry.USER_COLUMN_ID + "), " +
+                    "FOREIGN KEY(" + FavMoviesUsersEntry.COLUMN_MOVIE_ID + ") REFERENCES " +
+                    FavMovieEntry.MOVIE_TABLE_NAME + "(" + FavMovieEntry.MOVIE_COLUMN_ID + "), " +
+                    "PRIMARY KEY (" + FavMoviesUsersEntry.COLUMN_USER_ID + ", " +
+                    FavMoviesUsersEntry.COLUMN_MOVIE_ID + "))";
 
     private static final String QUERY_DROP_MOVIE_USER_TABLE =
             "DROP TABLE IF EXISTS " + FavMoviesUsersEntry.TABLE_NAME;
 
     private static final String QUERY_CREATE_REMINDER_TABLE =
-            "CREATE TABLE " + ReminderEntry.REMINDER_TABLE_NAME + " ("
-                    + ReminderEntry.REMINDER_COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
-                    + ReminderEntry.REMINDER_COLUMN_TIME + " TEXT NOT NULL, "
-                    + ReminderEntry.REMINDER_COLUMN_USER_ID + " INTEGER NOT NULL, "
-                    + ReminderEntry.REMINDER_COLUMN_MOVIE_ID + " INTEGER NOT NULL, "
-                    + "FOREIGN KEY(" + ReminderEntry.REMINDER_COLUMN_USER_ID + ") REFERENCES "
-                    + UserEntry.USER_TABLE_NAME + "(" + UserEntry.USER_COLUMN_ID + "), "
-                    + "FOREIGN KEY(" + ReminderEntry.REMINDER_COLUMN_MOVIE_ID + ") REFERENCES "
-                    + FavMovieEntry.MOVIE_TABLE_NAME + "(" + FavMovieEntry.MOVIE_COLUMN_ID + "))";
+            "CREATE TABLE " + ReminderEntry.REMINDER_TABLE_NAME + " (" +
+                    ReminderEntry.REMINDER_COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    ReminderEntry.REMINDER_COLUMN_TIME + " TEXT NOT NULL, " +
+                    ReminderEntry.REMINDER_COLUMN_USER_ID + " INTEGER NOT NULL, " +
+                    ReminderEntry.REMINDER_COLUMN_MOVIE_ID + " INTEGER NOT NULL, " +
+                    ReminderEntry.REMINDER_COLUMN_MOVIE_TITLE + " TEXT NOT NULL, " +
+                    ReminderEntry.REMINDER_COLUMN_MOVIE_IMAGE + " TEXT NOT NULL, " +
+                    ReminderEntry.REMINDER_COLUMN_MOVIE_RATING + " REAL NOT NULL, " +
+                    ReminderEntry.REMINDER_COLUMN_MOVIE_YEAR + " TEXT NOT NULL, " +
+                    "FOREIGN KEY(" + ReminderEntry.REMINDER_COLUMN_USER_ID + ") REFERENCES " +
+                    UserEntry.USER_TABLE_NAME + "(" + UserEntry.USER_COLUMN_ID + ")" +
+                    ")";
 
     private static final String QUERY_DROP_REMINDER_TABLE =
             "DROP TABLE IF EXISTS " + ReminderEntry.REMINDER_TABLE_NAME;

@@ -1,9 +1,20 @@
 package com.example.mockproject.fragment;
 
+
+import static com.example.mockproject.BuildConfig.API_KEY;
+import static com.example.mockproject.Constants.KEY_MOVIE_TYPE;
+import static com.example.mockproject.Constants.KEY_RATING_FILTER;
+import static com.example.mockproject.Constants.KEY_RELEASE_YEAR_FILTER;
+import static com.example.mockproject.Constants.KEY_SORT_OPTION;
+import static com.example.mockproject.Constants.SHARE_KEY;
+import static com.example.mockproject.Constants.TYPE_NOW_PLAYING;
+import static com.example.mockproject.Constants.TYPE_POPULAR;
+import static com.example.mockproject.Constants.TYPE_TOP_RATED;
+import static com.example.mockproject.Constants.TYPE_UPCOMING;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,8 +28,6 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.mockproject.MainActivity;
-import com.example.mockproject.callback.OnUpdateMovieListListener;
 import com.example.mockproject.R;
 import com.example.mockproject.api.ApiClient;
 import com.example.mockproject.api.MovieApiService;
@@ -34,20 +43,14 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class ListMoviesFragment extends Fragment implements OnUpdateMovieListListener {
-    private static final String API_KEY = "e7631ffcb8e766993e5ec0c1f4245f93";
-    public static final String TYPE_POPULAR = "POPULAR";
-    public static final String TYPE_UPCOMING = "UPCOMING";
-    public static final String TYPE_TOP_RATED = "TOP_RATED";
-    public static final String TYPE_NOW_PLAYING = "NOW_PLAYING";
+public class ListMoviesFragment extends Fragment  {
     private RecyclerView recyclerView;
     private MovieAdapter movieAdapter;
-    private boolean isGrid = false;
+    public boolean isGrid = false;
     private MovieApiService movieApiService;
     private boolean isLoading = false;
     private int currentPage = 1;
     private int totalPages = 1;
-    private String currentFetchType = TYPE_POPULAR;
     private SharedPreferences prefs;
     private SharedPreferences.OnSharedPreferenceChangeListener prefListener;
 
@@ -75,10 +78,10 @@ public class ListMoviesFragment extends Fragment implements OnUpdateMovieListLis
                 }
             }
         });
-        prefs = requireContext().getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
+        prefs = requireContext().getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
 
         prefListener = (sharedPreferences, key) -> {
-            if (key.equals(SettingsFragment.KEY_MOVIE_TYPE) || key.equals(SettingsFragment.KEY_RATING_FILTER) || key.equals(SettingsFragment.KEY_RELEASE_YEAR_FILTER) || key.equals(SettingsFragment.KEY_SORT_OPTION)) {
+            if (key.equals(KEY_MOVIE_TYPE) || key.equals(KEY_RATING_FILTER) || key.equals(KEY_RELEASE_YEAR_FILTER) || key.equals(KEY_SORT_OPTION)) {
                 currentPage = 1;
                 movieAdapter.updateMovies(new ArrayList<>());
                 fetchMovies(currentPage);
@@ -96,28 +99,39 @@ public class ListMoviesFragment extends Fragment implements OnUpdateMovieListLis
     private void updateLayoutManager() {
         recyclerView.setLayoutManager(isGrid ? new GridLayoutManager(getContext(), 2) : new LinearLayoutManager(getContext()));
     }
+    public void setMovieTypeAndRefresh(String type) {
+        currentPage = 1;
+        movieAdapter.updateMovies(new ArrayList<>());
+        fetchMovies(currentPage);
+    }
+    public void toggleLayout() {
+        isGrid = !isGrid;
+        updateLayoutManager();
+        movieAdapter = new MovieAdapter(movieAdapter.getMovies(), isGrid, getContext(), MovieAdapter.TYPE.LIST);
+        recyclerView.setAdapter(movieAdapter);
+    }
+
 
     private void fetchMovies(int page) {
         isLoading = true;
         movieAdapter.addLoadingFooter();
 
-        SharedPreferences sharedPreferences = requireContext().getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
-
-        String movieType = sharedPreferences.getString(SettingsFragment.KEY_MOVIE_TYPE, "Popular Movies");
+        SharedPreferences sharedPreferences = requireContext().getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
+        //String movieType = currentFetchType;
+        String movieType = sharedPreferences.getString(KEY_MOVIE_TYPE, "Popular Movies");
         Call<MovieResponse> call;
         switch (movieType) {
-            case "Top Rated Movies":
+            case TYPE_TOP_RATED:
                 call = movieApiService.getTopRatedMovies(API_KEY, page);
                 break;
-            case "Upcoming Movies":
+            case TYPE_UPCOMING:
                 call = movieApiService.getUpcomingMovies(API_KEY, page);
                 break;
-            case "Now Playing Movies":
+            case TYPE_NOW_PLAYING:
                 call = movieApiService.getNowPlayingMovies(API_KEY, page);
                 break;
-            case "Popular Movies":
+            case TYPE_POPULAR:
             default:
-                Log.d("TAGTAG", "HIIII");
                 call = movieApiService.getPopularMovies(API_KEY, page);
                 break;
         }
@@ -126,19 +140,18 @@ public class ListMoviesFragment extends Fragment implements OnUpdateMovieListLis
             @Override
             public void onResponse(@NonNull Call<MovieResponse> call, @NonNull Response<MovieResponse> response) {
                 movieAdapter.removeLoadingFooter();
-                Log.d("TAGTAG", "BYEE");
                 isLoading = false;
                 if (response.isSuccessful() && response.body() != null) {
                     List<Movie> newMovies = response.body().getMovies();
 
-                    float minRating = sharedPreferences.getFloat(SettingsFragment.KEY_RATING_FILTER, 0f);
+                    float minRating = sharedPreferences.getFloat(KEY_RATING_FILTER, 0f);
                     if (minRating > 0f) {
                         newMovies = newMovies.stream()
                                 .filter(m -> Float.parseFloat(m.getRating()) >= minRating)
                                 .collect(Collectors.toList());
                     }
 
-                    int minYear = sharedPreferences.getInt(SettingsFragment.KEY_RELEASE_YEAR_FILTER, 1970);
+                    int minYear = sharedPreferences.getInt(KEY_RELEASE_YEAR_FILTER, 1970);
                     newMovies = newMovies.stream()
                             .filter(m -> {
                                 try {
@@ -150,7 +163,7 @@ public class ListMoviesFragment extends Fragment implements OnUpdateMovieListLis
                             })
                             .collect(Collectors.toList());
 
-                    String sortOption = sharedPreferences.getString(SettingsFragment.KEY_SORT_OPTION, "Release Date Descending");
+                    String sortOption = sharedPreferences.getString(KEY_SORT_OPTION, "Release Date Descending");
                     if ("Rating Descending".equals(sortOption)) {
                         newMovies.sort((m1, m2) -> Float.compare(Float.parseFloat(m2.getRating()), Float.parseFloat(m1.getRating())));
                     } else {
@@ -177,24 +190,7 @@ public class ListMoviesFragment extends Fragment implements OnUpdateMovieListLis
         });
     }
 
-    @Override
-    public void onToolbarIconClick() {
-        isGrid = !isGrid;
-        updateLayoutManager();
-        movieAdapter = new MovieAdapter(movieAdapter.getMovies(), isGrid, getContext(), MovieAdapter.TYPE.LIST);
-        recyclerView.setAdapter(movieAdapter);
-    }
-
-    @Override
-    public void onToolbarOpsClick(String type) {
-        currentFetchType = type;
-        currentPage = 1;
-        movieAdapter.updateMovies(new ArrayList<>());
-        fetchMovies(currentPage); //currentFetchType
-    }
-
-    @Override
-    public void onUpdateItemStarFav(int movieId) {
+    public void updateItemStarFav(int movieId) {
         movieAdapter.updateItemFavStar(movieId);
     }
 

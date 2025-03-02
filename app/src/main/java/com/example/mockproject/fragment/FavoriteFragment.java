@@ -1,5 +1,8 @@
 package com.example.mockproject.fragment;
 
+import static com.example.mockproject.Constants.SHARE_KEY;
+import static com.example.mockproject.Constants.USER_ID;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -16,7 +19,6 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.mockproject.MainActivity;
 import com.example.mockproject.callback.OnLoginRequestListener;
 import com.example.mockproject.callback.OnUpdateFavoriteListListener;
 import com.example.mockproject.R;
@@ -31,7 +33,6 @@ public class FavoriteFragment extends Fragment implements OnUpdateFavoriteListLi
     private OnLoginRequestListener loginRequestListener;
     private MovieRepository movieRepository;
     private SharedPreferences sharedPreferences;
-    private RecyclerView recyclerView;
     private MovieAdapter favMovieAdapter;
     private ScrollView scrollView;
     private TextView btnLogin;
@@ -50,17 +51,17 @@ public class FavoriteFragment extends Fragment implements OnUpdateFavoriteListLi
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_favorite, container, false);
         movieRepository = new MovieRepository(getContext());
-        sharedPreferences = requireContext().getSharedPreferences(MainActivity.SHARE_KEY, Context.MODE_PRIVATE);
-        String userId = sharedPreferences.getString(MainActivity.USER_ID, "");
+        sharedPreferences = requireContext().getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
+        String userId = sharedPreferences.getString(USER_ID, "");
 
-        recyclerView = view.findViewById(R.id.fav_recyclerView);
+        RecyclerView recyclerView = view.findViewById(R.id.fav_recyclerView);
         scrollView = view.findViewById(R.id.fav_scroll_view);
         btnLogin = view.findViewById(R.id.fav_btn_login);
 
         favMovieAdapter = new MovieAdapter(new ArrayList<>(), false, getContext(), MovieAdapter.TYPE.FAV);
+        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(favMovieAdapter);
         recyclerView.addItemDecoration(new DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL));
-
         if(userId.isEmpty()){
             onUpdateFavoriteUILogin();
         }else{
@@ -82,14 +83,22 @@ public class FavoriteFragment extends Fragment implements OnUpdateFavoriteListLi
     @Override
     public void onUpdateFavoriteList() {
         setLoginMode(false);
-        String userId = sharedPreferences.getString(MainActivity.USER_ID, "");
+        String userId = sharedPreferences.getString(USER_ID, "");
         if (userId.isEmpty()) {
             return;
         }
         List<Movie> favMovies = movieRepository.getFavMoviesByUserId(Integer.parseInt(userId));
         favMovieAdapter.updateMovies(favMovies);
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        recyclerView.setAdapter(favMovieAdapter);
+    }
+
+    public void updateFavoriteList() {
+        setLoginMode(false);
+        String userId = sharedPreferences.getString(USER_ID, "");
+        if (userId.isEmpty()) {
+            return;
+        }
+        List<Movie> favMovies = movieRepository.getFavMoviesByUserId(Integer.parseInt(userId));
+        favMovieAdapter.updateMovies(favMovies);
     }
 
 
