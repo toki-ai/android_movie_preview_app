@@ -12,6 +12,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -110,14 +111,28 @@ public class MovieAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 movieHolder.overview.setText(movie.getOverview());
                 movieHolder.releaseDate.setText(movie.getReleaseDate());
 
-                if (!userId.isEmpty()) {
-                    movie.setFav(movieRepository.isMovieAdded(Integer.parseInt(userId), movie.getId()));
+                if (userId.isEmpty()) {
+                    movie.setFav(false);
                     movieHolder.btnMovieFavorite.setImageResource(
-                            movie.isFav() ? R.drawable.icon_movie_star : R.drawable.icon_movie_start_outline
+                            R.drawable.icon_movie_start_outline
+                    );
+                } else {
+                    boolean isFav = movieRepository.isMovieAdded(Integer.parseInt(userId), movie.getId());
+                    movie.setFav(isFav);
+                    movieHolder.btnMovieFavorite.setImageResource(
+                            isFav ? R.drawable.icon_movie_star
+                                    : R.drawable.icon_movie_start_outline
                     );
                 }
 
                 movieHolder.btnMovieFavorite.setOnClickListener(v -> {
+                    if (userId.isEmpty()) {
+                        Toast.makeText(context, "You need to login to add favorites", Toast.LENGTH_SHORT).show();
+                        if (context instanceof com.example.mockproject.callback.OnLoginRequestListener) {
+                            ((com.example.mockproject.callback.OnLoginRequestListener) context).onLoginRequested();
+                        }
+                        return;
+                    }
                     if (type.equals(TYPE.LIST)) {
                         movie.setFav(!movie.isFav());
                         movieHolder.btnMovieFavorite.setImageResource(

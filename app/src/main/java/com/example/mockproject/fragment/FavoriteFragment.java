@@ -17,7 +17,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.example.mockproject.callback.OnLoginRequestListener;
 import com.example.mockproject.callback.OnUpdateFavoriteListListener;
@@ -65,7 +64,6 @@ public class FavoriteFragment extends Fragment implements OnUpdateFavoriteListLi
         if(userId.isEmpty()){
             onUpdateFavoriteUILogin();
         }else{
-            Toast.makeText(getContext(), "Favorite Fragment", Toast.LENGTH_SHORT).show();
             onUpdateFavoriteList();
         }
         return  view;
@@ -90,17 +88,6 @@ public class FavoriteFragment extends Fragment implements OnUpdateFavoriteListLi
         List<Movie> favMovies = movieRepository.getFavMoviesByUserId(Integer.parseInt(userId));
         favMovieAdapter.updateMovies(favMovies);
     }
-
-    public void updateFavoriteList() {
-        setLoginMode(false);
-        String userId = sharedPreferences.getString(USER_ID, "");
-        if (userId.isEmpty()) {
-            return;
-        }
-        List<Movie> favMovies = movieRepository.getFavMoviesByUserId(Integer.parseInt(userId));
-        favMovieAdapter.updateMovies(favMovies);
-    }
-
 
     @Override
     public void onUpdateFavoriteUILogin() {

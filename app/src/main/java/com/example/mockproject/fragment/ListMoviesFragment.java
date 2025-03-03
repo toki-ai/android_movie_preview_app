@@ -66,7 +66,7 @@ public class ListMoviesFragment extends Fragment  {
         updateLayoutManager();
 
         movieApiService = ApiClient.getClient().create(MovieApiService.class);
-        fetchMovies(currentPage); //currentFetchType
+        fetchMovies(currentPage);
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
@@ -81,7 +81,12 @@ public class ListMoviesFragment extends Fragment  {
         prefs = requireContext().getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
 
         prefListener = (sharedPreferences, key) -> {
-            if (key.equals(KEY_MOVIE_TYPE) || key.equals(KEY_RATING_FILTER) || key.equals(KEY_RELEASE_YEAR_FILTER) || key.equals(KEY_SORT_OPTION)) {
+            if (key != null &&
+                    (key.equals(KEY_MOVIE_TYPE)
+                            || key.equals(KEY_RATING_FILTER)
+                            || key.equals(KEY_RELEASE_YEAR_FILTER)
+                            || key.equals(KEY_SORT_OPTION))
+            ) {
                 currentPage = 1;
                 movieAdapter.updateMovies(new ArrayList<>());
                 fetchMovies(currentPage);
@@ -93,13 +98,13 @@ public class ListMoviesFragment extends Fragment  {
     }
     private void loadNextPage() {
         currentPage++;
-        fetchMovies(currentPage); //currentFetchType
+        fetchMovies(currentPage);
     }
 
     private void updateLayoutManager() {
         recyclerView.setLayoutManager(isGrid ? new GridLayoutManager(getContext(), 2) : new LinearLayoutManager(getContext()));
     }
-    public void setMovieTypeAndRefresh(String type) {
+    public void refreshMovies() {
         currentPage = 1;
         movieAdapter.updateMovies(new ArrayList<>());
         fetchMovies(currentPage);
@@ -111,13 +116,11 @@ public class ListMoviesFragment extends Fragment  {
         recyclerView.setAdapter(movieAdapter);
     }
 
-
     private void fetchMovies(int page) {
         isLoading = true;
         movieAdapter.addLoadingFooter();
 
         SharedPreferences sharedPreferences = requireContext().getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
-        //String movieType = currentFetchType;
         String movieType = sharedPreferences.getString(KEY_MOVIE_TYPE, "Popular Movies");
         Call<MovieResponse> call;
         switch (movieType) {

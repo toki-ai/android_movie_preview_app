@@ -28,13 +28,10 @@ import android.widget.RadioGroup;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
-import com.example.mockproject.MainActivity;
 import com.example.mockproject.R;
 
 public class SettingsFragment extends Fragment {
 
-    private RadioGroup radioGroupFilter, radioGroupSort;
-    private SeekBar seekBarRating, seekBarYear;
     private TextView tvRatingValue, tvYearValue;
     private SharedPreferences sharedPreferences;
 
@@ -47,19 +44,19 @@ public class SettingsFragment extends Fragment {
 
         sharedPreferences = requireActivity().getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
 
-        radioGroupFilter = view.findViewById(R.id.detail_radio_filter_type);
+        RadioGroup radioGroupFilter = view.findViewById(R.id.detail_radio_filter_type);
         RadioButton radioPopular = view.findViewById(R.id.radio_popular);
         RadioButton radioTopRated = view.findViewById(R.id.radio_top_rated);
         RadioButton radioUpcoming = view.findViewById(R.id.radio_upcoming);
         RadioButton radioNowPlaying = view.findViewById(R.id.radio_now_playing);
 
-        seekBarRating = view.findViewById(R.id.detail_rating_seekbar);
+        SeekBar seekBarRating = view.findViewById(R.id.detail_rating_seekbar);
         tvRatingValue = view.findViewById(R.id.detail_rating_value);
 
-        seekBarYear = view.findViewById(R.id.detail_release_seekbar);
+        SeekBar seekBarYear = view.findViewById(R.id.detail_release_seekbar);
         tvYearValue = view.findViewById(R.id.detail_release_year_value);
 
-        radioGroupSort = view.findViewById(R.id.detail_sort_radio);
+        RadioGroup radioGroupSort = view.findViewById(R.id.detail_sort_radio);
         RadioButton radioSortRelease = view.findViewById(R.id.radio_sort_release_date);
         RadioButton radioSortRating = view.findViewById(R.id.radio_sort_rating);
 

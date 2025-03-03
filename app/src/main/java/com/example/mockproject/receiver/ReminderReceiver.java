@@ -12,7 +12,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.os.Build;
 
 import androidx.core.app.NotificationCompat;
 
@@ -77,17 +76,15 @@ public class ReminderReceiver extends BroadcastReceiver {
     }
 
     private void createNotificationChannel(Context context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID,
-                    CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_HIGH
-            );
-            channel.setDescription("Channel for Movie Reminder Notifications");
-            NotificationManager manager = context.getSystemService(NotificationManager.class);
-            if (manager != null) {
-                manager.createNotificationChannel(channel);
-            }
+        NotificationChannel channel = new NotificationChannel(
+                CHANNEL_ID,
+                CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_HIGH
+        );
+        channel.setDescription("Channel for Movie Reminder Notifications");
+        NotificationManager manager = context.getSystemService(NotificationManager.class);
+        if (manager != null) {
+            manager.createNotificationChannel(channel);
         }
     }
 }

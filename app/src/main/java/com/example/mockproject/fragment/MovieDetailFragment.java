@@ -37,13 +37,13 @@ import com.example.mockproject.MainActivity;
 import com.example.mockproject.R;
 import com.example.mockproject.api.ApiClient;
 import com.example.mockproject.api.MovieApiService;
+import com.example.mockproject.callback.OnLoginRequestListener;
 import com.example.mockproject.database.MovieRepository;
 import com.example.mockproject.database.ReminderRepository;
 import com.example.mockproject.entities.CreditResponse;
 import com.example.mockproject.entities.Movie;
 import com.example.mockproject.entities.Reminder;
 import com.example.mockproject.fragment.adapter.CastAdapter;
-import com.example.mockproject.fragment.adapter.MovieAdapter;
 import com.example.mockproject.receiver.ReminderReceiver;
 import com.squareup.picasso.Picasso;
 
@@ -129,6 +129,13 @@ public class MovieDetailFragment extends Fragment {
         detailBtnReminder.setOnClickListener(v -> requestNotificationPermissionIfNeeded());
 
         detailBtnFav.setOnClickListener(v -> {
+            if (userId == 0) {
+                Toast.makeText(getContext(), "Need login to add movie to favorite list", Toast.LENGTH_SHORT).show();
+                if (requireActivity() instanceof OnLoginRequestListener) {
+                    ((OnLoginRequestListener) requireActivity()).onLoginRequested();
+                }
+                return;
+            }
             if (currentMovie != null) {
                 currentMovie.setFav(!currentMovie.isFav());
                 movieRepository.handleClickFavMovie(currentMovie);
@@ -166,10 +173,12 @@ public class MovieDetailFragment extends Fragment {
     private void setAlarmAndShowNotification() {
 
         if (userId == 0) {
-            Toast.makeText(getContext(), "Need permission to set reminder", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Need login before set reminder", Toast.LENGTH_SHORT).show();
+            if (requireActivity() instanceof OnLoginRequestListener) {
+                ((OnLoginRequestListener) requireActivity()).onLoginRequested();
+            }
             return;
         }
-
         ReminderRepository reminderRepository = new ReminderRepository(getContext());
         List<Reminder> reminders = reminderRepository.getRemindersByUser(userId);
         if (reminders.size() >= 10) {

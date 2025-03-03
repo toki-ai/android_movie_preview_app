@@ -79,7 +79,6 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
     private Fragment currentFragment;
     private OnUpdateFavoriteListListener onUpdateFavListListener;
     private UserRepository userRepository;
-    private MovieRepository movieRepository;
     private SharedPreferences sharedPreferences;
     private FrameLayout detailFrameContainer, frameContainer;
     private ImageButton toolbarIconList, toolbarOptionsMenu, toolbarSearch, toolbarBack, toolbarBurger;
@@ -90,7 +89,7 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
     private boolean isSearching = false;
-    private String logText = "Main Activity";
+    private final String logText = "Main Activity";
 
     public void setOnUpdateFavListListener(OnUpdateFavoriteListListener listener) {
         this.onUpdateFavListListener = listener;
@@ -103,8 +102,6 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         setContentView(R.layout.activity_main);
 
         userRepository = new UserRepository(MainActivity.this);
-        movieRepository = new MovieRepository(MainActivity.this);
-
         sharedPreferences = getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
 //        SharedPreferences.Editor editor = sharedPreferences.edit();
 //        editor.clear();
@@ -210,6 +207,10 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
                 onUpdateFavListListener.onUpdateFavoriteUILogin();
             }
             setUpDrawer();
+            ListMoviesFragment listFragment = (ListMoviesFragment) getOrCreateFragment(ListMoviesFragment.class, FRAGMENT_MOVIE);
+            if (listFragment != null) {
+                listFragment.refreshMovies();
+            }
         });
         btnEdit.setOnClickListener(v -> setProfileEditMode(true));
         btnCancel.setOnClickListener(v -> {
@@ -269,7 +270,7 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
 
                     ListMoviesFragment listFragment = (ListMoviesFragment) getOrCreateFragment(ListMoviesFragment.class, FRAGMENT_MOVIE);
                     if (listFragment != null && listFragment.getView() != null) {
-                        listFragment.setMovieTypeAndRefresh(selectedType);
+                        listFragment.refreshMovies();
                     }
                     return true;
                 }
@@ -451,6 +452,11 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
                 bottomSheetDialog.dismiss();
                 if (onUpdateFavListListener != null) {
                     onUpdateFavListListener.onUpdateFavoriteList();
+                }
+
+                ListMoviesFragment listFragment = (ListMoviesFragment) getOrCreateFragment(ListMoviesFragment.class, FRAGMENT_MOVIE);
+                if (listFragment != null) {
+                    listFragment.refreshMovies();
                 }
             }
         });

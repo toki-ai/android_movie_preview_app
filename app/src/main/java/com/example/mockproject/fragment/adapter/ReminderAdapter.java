@@ -33,7 +33,6 @@ public class ReminderAdapter extends RecyclerView.Adapter<ReminderAdapter.Remind
     private final Context context;
 
     public ReminderAdapter(Context context, List<Reminder> reminders) {
-        Toast.makeText(context, String.valueOf(reminders.size()), Toast.LENGTH_SHORT).show();
         this.context = context;
         this.reminders = reminders;
     }
@@ -49,7 +48,6 @@ public class ReminderAdapter extends RecyclerView.Adapter<ReminderAdapter.Remind
     @Override
     public void onBindViewHolder(@NonNull ReminderViewHolder holder, int position) {
         Reminder reminder = reminders.get(position);
-        Toast.makeText(context, "HIII", Toast.LENGTH_SHORT).show();
         if (reminder.getMovie() != null && reminder.getMovie().getPosterUrl() != null) {
             Picasso.get()
                     .load(reminder.getMovie().getPosterUrl())
@@ -83,7 +81,7 @@ public class ReminderAdapter extends RecyclerView.Adapter<ReminderAdapter.Remind
         }else {
             holder.btnDelete.setVisibility(View.VISIBLE);
             holder.btnDelete.setOnClickListener(v -> {
-                cancelAlarm(reminder.getId(), reminder.getMovie().getId());
+                cancelAlarm(reminder.getMovie().getId());
                 if (context instanceof ReminderActivity) {
                     ((ReminderActivity) context).deleteReminderDirectly(reminder.getId());
                 }
@@ -102,7 +100,7 @@ public class ReminderAdapter extends RecyclerView.Adapter<ReminderAdapter.Remind
         return reminders.size();
     }
 
-    private void cancelAlarm(int reminderId, int movieId) {
+    private void cancelAlarm(int movieId) {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(context, ReminderReceiver.class);
 
