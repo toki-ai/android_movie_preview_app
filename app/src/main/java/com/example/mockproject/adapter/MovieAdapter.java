@@ -134,18 +134,23 @@ public class MovieAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                         }
                         return;
                     }
-                    movie.setFav(!movie.isFav());
-
-                    movieHolder.btnMovieFavorite.setImageResource(
-                            movie.isFav() ? R.drawable.icon_movie_star : R.drawable.icon_movie_start_outline
-                    );
-                    notifyItemChanged(position);
-
+                    if (type.equals(TYPE.LIST)) {
+                        movie.setFav(!movie.isFav());
+                        movieHolder.btnMovieFavorite.setImageResource(
+                                movie.isFav() ? R.drawable.icon_movie_star : R.drawable.icon_movie_start_outline
+                        );
+                        notifyItemChanged(position);
+                    } else if (type.equals(TYPE.FAV)) {
+                        int indexToRemove = movies.indexOf(movie);
+                        if (indexToRemove != -1) {
+                            movies.remove(indexToRemove);
+                            notifyItemRemoved(indexToRemove);
+                        }
+                    }
                     if (context instanceof MainActivity) {
                         ((MainActivity) context).updateFavoriteListDirectly(movie, type);
                     }
                 });
-
             }
             movieHolder.itemView.setOnClickListener(v -> {
                 if (context instanceof MainActivity) {
