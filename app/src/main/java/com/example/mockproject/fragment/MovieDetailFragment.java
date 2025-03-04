@@ -1,8 +1,13 @@
 package com.example.mockproject.fragment;
 
 import static com.example.mockproject.BuildConfig.API_KEY;
-import static com.example.mockproject.Constants.SHARE_KEY;
-import static com.example.mockproject.Constants.USER_ID;
+import static com.example.mockproject.utils.Constants.RECEIVER_MOVIE_RATING;
+import static com.example.mockproject.utils.Constants.RECEIVER_MOVIE_TITLE;
+import static com.example.mockproject.utils.Constants.RECEIVER_MOVIE_YEAR;
+import static com.example.mockproject.utils.Constants.RECEIVER_TIME;
+import static com.example.mockproject.utils.Constants.RECEIVER_USER_ID;
+import static com.example.mockproject.utils.Constants.SHARE_KEY;
+import static com.example.mockproject.utils.Constants.USER_ID;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -43,7 +48,7 @@ import com.example.mockproject.database.ReminderRepository;
 import com.example.mockproject.entities.CreditResponse;
 import com.example.mockproject.entities.Movie;
 import com.example.mockproject.entities.Reminder;
-import com.example.mockproject.fragment.adapter.CastAdapter;
+import com.example.mockproject.adapter.CastAdapter;
 import com.example.mockproject.receiver.ReminderReceiver;
 import com.squareup.picasso.Picasso;
 
@@ -138,7 +143,6 @@ public class MovieDetailFragment extends Fragment {
             }
             if (currentMovie != null) {
                 currentMovie.setFav(!currentMovie.isFav());
-                movieRepository.handleClickFavMovie(currentMovie);
                 if (getActivity() instanceof MainActivity) {
                     ((MainActivity) getActivity()).updateFavoriteListDirectly(currentMovie, null);
                 }
@@ -171,7 +175,6 @@ public class MovieDetailFragment extends Fragment {
     }
 
     private void setAlarmAndShowNotification() {
-
         if (userId == 0) {
             Toast.makeText(getContext(), "Need login before set reminder", Toast.LENGTH_SHORT).show();
             if (requireActivity() instanceof OnLoginRequestListener) {
@@ -204,23 +207,15 @@ public class MovieDetailFragment extends Fragment {
                                     startActivity(intent);
                                     return;
                                 }
-                                boolean reminderSuccess = reminderRepository.setOrUpdateReminder(
-                                        userId,
-                                        movieId,
-                                        String.valueOf(timeInMillis),
-                                        movieTitle,
-                                        movieImage,
-                                        movieRating,
-                                        movieYear
-                                );
+                                boolean reminderSuccess = reminderRepository.setOrUpdateReminder(userId, movieId, String.valueOf(timeInMillis), movieTitle, movieImage, movieRating, movieYear);
                                 if (reminderSuccess) {
                                     Intent intent = new Intent(getContext(), ReminderReceiver.class);
-                                    intent.putExtra("MOVIE_TITLE", movieTitle);
-                                    intent.putExtra("reminder_time", timeInMillis);
-                                    intent.putExtra("MOVIE_RATING", detailRating.getText().toString());
+                                    intent.putExtra(RECEIVER_TIME, timeInMillis);
+                                    intent.putExtra(RECEIVER_MOVIE_TITLE, movieTitle);
+                                    intent.putExtra(RECEIVER_MOVIE_RATING, detailRating.getText().toString());
                                     String releaseDate = detailReleaseDate.getText().toString();
-                                    intent.putExtra("MOVIE_YEAR", releaseDate.length() >= 4 ? releaseDate.substring(0, 4) : "N/A");
-                                    intent.putExtra("USER_ID", userId);
+                                    intent.putExtra(RECEIVER_MOVIE_YEAR, releaseDate.length() >= 4 ? releaseDate.substring(0, 4) : "N/A");
+                                    intent.putExtra(RECEIVER_USER_ID, userId);
 
                                     PendingIntent pendingIntent = PendingIntent.getBroadcast(
                                             getContext(),
@@ -252,6 +247,7 @@ public class MovieDetailFragment extends Fragment {
         );
         datePicker.show();
     }
+
     private void fetchMovieDetails(int movieId) {
         movieApiService.getMovieDetail(movieId, API_KEY).enqueue(new Callback<>() {
             @Override
@@ -267,7 +263,6 @@ public class MovieDetailFragment extends Fragment {
                     Toast.makeText(getContext(), "Failed to load detail", Toast.LENGTH_SHORT).show();
                 }
             }
-
             @Override
             public void onFailure(@NonNull Call<Movie> call, @NonNull Throwable t) {
                 Toast.makeText(getContext(), "Network error", Toast.LENGTH_SHORT).show();
@@ -317,7 +312,6 @@ public class MovieDetailFragment extends Fragment {
                     Toast.makeText(getContext(), "No Cast/Crew data", Toast.LENGTH_SHORT).show();
                 }
             }
-
             @Override
             public void onFailure(@NonNull Call<CreditResponse> call,
                                   @NonNull Throwable t) {

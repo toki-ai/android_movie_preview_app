@@ -1,7 +1,7 @@
-package com.example.mockproject.fragment.adapter;
+package com.example.mockproject.adapter;
 
-import static com.example.mockproject.Constants.SHARE_KEY;
-import static com.example.mockproject.Constants.USER_ID;
+import static com.example.mockproject.utils.Constants.SHARE_KEY;
+import static com.example.mockproject.utils.Constants.USER_ID;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mockproject.MainActivity;
 import com.example.mockproject.R;
+import com.example.mockproject.callback.OnLoginRequestListener;
 import com.example.mockproject.database.MovieRepository;
 import com.example.mockproject.entities.Movie;
 import com.squareup.picasso.Picasso;
@@ -128,28 +129,23 @@ public class MovieAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 movieHolder.btnMovieFavorite.setOnClickListener(v -> {
                     if (userId.isEmpty()) {
                         Toast.makeText(context, "You need to login to add favorites", Toast.LENGTH_SHORT).show();
-                        if (context instanceof com.example.mockproject.callback.OnLoginRequestListener) {
-                            ((com.example.mockproject.callback.OnLoginRequestListener) context).onLoginRequested();
+                        if (context instanceof OnLoginRequestListener) {
+                            ((OnLoginRequestListener) context).onLoginRequested();
                         }
                         return;
                     }
-                    if (type.equals(TYPE.LIST)) {
-                        movie.setFav(!movie.isFav());
-                        movieHolder.btnMovieFavorite.setImageResource(
-                                movie.isFav() ? R.drawable.icon_movie_star : R.drawable.icon_movie_start_outline
-                        );
-                        notifyItemChanged(position);
-                    } else if (type.equals(TYPE.FAV)) {
-                            int indexToRemove = movies.indexOf(movie);
-                            if (indexToRemove != -1) {
-                                movies.remove(indexToRemove);
-                                notifyItemRemoved(indexToRemove);
-                            }
-                    }
+                    movie.setFav(!movie.isFav());
+
+                    movieHolder.btnMovieFavorite.setImageResource(
+                            movie.isFav() ? R.drawable.icon_movie_star : R.drawable.icon_movie_start_outline
+                    );
+                    notifyItemChanged(position);
+
                     if (context instanceof MainActivity) {
                         ((MainActivity) context).updateFavoriteListDirectly(movie, type);
                     }
                 });
+
             }
             movieHolder.itemView.setOnClickListener(v -> {
                 if (context instanceof MainActivity) {

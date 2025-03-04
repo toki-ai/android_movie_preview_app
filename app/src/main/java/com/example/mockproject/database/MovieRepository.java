@@ -1,7 +1,7 @@
 package com.example.mockproject.database;
 
-import static com.example.mockproject.Constants.SHARE_KEY;
-import static com.example.mockproject.Constants.USER_ID;
+import static com.example.mockproject.utils.Constants.SHARE_KEY;
+import static com.example.mockproject.utils.Constants.USER_ID;
 
 import android.content.ContentValues;
 import android.content.Context;

@@ -1,7 +1,7 @@
 package com.example.mockproject;
 
-import static com.example.mockproject.Constants.SHARE_KEY;
-import static com.example.mockproject.Constants.USER_ID;
+import static com.example.mockproject.utils.Constants.SHARE_KEY;
+import static com.example.mockproject.utils.Constants.USER_ID;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -16,7 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mockproject.database.ReminderRepository;
 import com.example.mockproject.entities.Reminder;
-import com.example.mockproject.fragment.adapter.ReminderAdapter;
+import com.example.mockproject.adapter.ReminderAdapter;
 
 import java.util.ArrayList;
 import java.util.List;

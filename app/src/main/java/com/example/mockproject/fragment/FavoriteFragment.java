@@ -1,7 +1,7 @@
 package com.example.mockproject.fragment;
 
-import static com.example.mockproject.Constants.SHARE_KEY;
-import static com.example.mockproject.Constants.USER_ID;
+import static com.example.mockproject.utils.Constants.SHARE_KEY;
+import static com.example.mockproject.utils.Constants.USER_ID;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -23,7 +23,7 @@ import com.example.mockproject.callback.OnUpdateFavoriteListListener;
 import com.example.mockproject.R;
 import com.example.mockproject.database.MovieRepository;
 import com.example.mockproject.entities.Movie;
-import com.example.mockproject.fragment.adapter.MovieAdapter;
+import com.example.mockproject.adapter.MovieAdapter;
 
 import java.util.ArrayList;
 import java.util.List;

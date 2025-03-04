@@ -1,16 +1,16 @@
 package com.example.mockproject;
 
-import static com.example.mockproject.Constants.FRAGMENT_ABOUT;
-import static com.example.mockproject.Constants.FRAGMENT_FAVORITE;
-import static com.example.mockproject.Constants.FRAGMENT_MOVIE;
-import static com.example.mockproject.Constants.FRAGMENT_SETTING;
-import static com.example.mockproject.Constants.KEY_MOVIE_TYPE;
-import static com.example.mockproject.Constants.SHARE_KEY;
-import static com.example.mockproject.Constants.TYPE_NOW_PLAYING;
-import static com.example.mockproject.Constants.TYPE_POPULAR;
-import static com.example.mockproject.Constants.TYPE_TOP_RATED;
-import static com.example.mockproject.Constants.TYPE_UPCOMING;
-import static com.example.mockproject.Constants.USER_ID;
+import static com.example.mockproject.utils.Constants.FRAGMENT_ABOUT;
+import static com.example.mockproject.utils.Constants.FRAGMENT_FAVORITE;
+import static com.example.mockproject.utils.Constants.FRAGMENT_MOVIE;
+import static com.example.mockproject.utils.Constants.FRAGMENT_SETTING;
+import static com.example.mockproject.utils.Constants.KEY_MOVIE_TYPE;
+import static com.example.mockproject.utils.Constants.SHARE_KEY;
+import static com.example.mockproject.utils.Constants.TYPE_NOW_PLAYING;
+import static com.example.mockproject.utils.Constants.TYPE_POPULAR;
+import static com.example.mockproject.utils.Constants.TYPE_TOP_RATED;
+import static com.example.mockproject.utils.Constants.TYPE_UPCOMING;
+import static com.example.mockproject.utils.Constants.USER_ID;
 
 import android.Manifest;
 import android.app.DatePickerDialog;
@@ -63,8 +63,9 @@ import com.example.mockproject.fragment.FavoriteFragment;
 import com.example.mockproject.fragment.ListMoviesFragment;
 import com.example.mockproject.fragment.MovieDetailFragment;
 import com.example.mockproject.fragment.SettingsFragment;
-import com.example.mockproject.fragment.adapter.MovieAdapter;
-import com.example.mockproject.fragment.adapter.ReminderAdapter;
+import com.example.mockproject.adapter.MovieAdapter;
+import com.example.mockproject.adapter.ReminderAdapter;
+import com.example.mockproject.utils.Utils;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.navigation.NavigationView;
@@ -103,25 +104,18 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
 
         userRepository = new UserRepository(MainActivity.this);
         sharedPreferences = getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
-//        SharedPreferences.Editor editor = sharedPreferences.edit();
-//        editor.clear();
-//        editor.apply();
+        //sharedPreferences.edit().clear().apply();
         detailFrameContainer = findViewById(R.id.detail_frame_container);
         frameContainer = findViewById(R.id.frame_container);
 
         setUpDrawer();
         setUpToolbar();
-        setUpEagerFavoriteFragment();
         setUpBottomNavAndVisibleToolbar();
     }
 
     private void setUpDrawer() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(
-                    this,
-                    new String[]{Manifest.permission.CAMERA},
-                    100
-            );
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, 100);
         }
 
         drawerLayout = findViewById(R.id.drawer_layout);
@@ -144,6 +138,46 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         } else {
             loadDrawerData(headerView, userId);
         }
+    }
+
+    public void showBottomDialog(Context context) {
+        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(context);
+        bottomSheetDialog.setContentView(R.layout.dialog_login);
+        EditText inputEmail = bottomSheetDialog.findViewById(R.id.login_email);
+        EditText inputUsername = bottomSheetDialog.findViewById(R.id.login_username);
+        TextView btnSignIn = bottomSheetDialog.findViewById(R.id.login_submit);
+        if(btnSignIn == null) return;
+
+        btnSignIn.setOnClickListener(v -> {
+            String email = (inputEmail != null ? inputEmail.getText().toString().trim() : "");
+            String username = (inputUsername != null ? inputUsername.getText().toString().trim() : "");
+            if (email.isEmpty() || username.isEmpty()) {
+                Toast.makeText(context, "Please input email and username", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!Utils.isValidEmail(email)) {
+                Toast.makeText(context, "Please input valid email", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            long userId = userRepository.login(username, null, email, null, null);
+            if (userId > 0) {
+                sharedPreferences.edit().putString(USER_ID, String.valueOf(userId)).apply();
+                Toast.makeText(context, "Login successfully!", Toast.LENGTH_SHORT).show();
+                setUpDrawer();
+                bottomSheetDialog.dismiss();
+
+                if (onUpdateFavListListener != null) {
+                    onUpdateFavListListener.onUpdateFavoriteList();
+                }
+
+                ListMoviesFragment listFragment = (ListMoviesFragment) getOrCreateFragment(ListMoviesFragment.class, FRAGMENT_MOVIE);
+                if (listFragment != null) {
+                    listFragment.refreshMovies();
+                }
+            }
+        });
+        bottomSheetDialog.show();
     }
 
     private void loadDrawerData(View headerView, String userId) {
@@ -212,16 +246,97 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
                 listFragment.refreshMovies();
             }
         });
+
         btnEdit.setOnClickListener(v -> setProfileEditMode(true));
+
         btnCancel.setOnClickListener(v -> {
             setProfileEditMode(false);
             loadDrawerData(headerView, userId);
         });
+
         btnSave.setOnClickListener(v -> {
             saveProfileToDatabase(userId);
             setProfileEditMode(false);
             loadDrawerData(headerView, userId);
         });
+    }
+
+    private void setProfileEditMode(boolean isEdit) {
+        isMale.setEnabled(isEdit);
+        isFemale.setEnabled(isEdit);
+        profileUsername.setEnabled(isEdit);
+        profileEmail.setEnabled(isEdit);
+        profileBirthday.setEnabled(isEdit);
+        btnLogout.setVisibility(isEdit ? View.GONE : View.VISIBLE);
+        btnEdit.setVisibility(isEdit ? View.GONE : View.VISIBLE);
+        btnSave.setVisibility(isEdit ? View.VISIBLE : View.GONE);
+        btnCancel.setVisibility(isEdit ? View.VISIBLE : View.GONE);
+        if (isEdit) {
+            profileAvatar.setOnClickListener(v -> showMediaPopup());
+            profileBirthday.setOnClickListener(v -> {
+                Calendar calendar = Calendar.getInstance();
+                DatePickerDialog datePickerDialog = new DatePickerDialog(MainActivity.this,
+                        (view, year, month, dayOfMonth) -> {
+                            String selectedDate = dayOfMonth + "/" + (month + 1) + "/" + year;
+                            profileBirthday.setText(selectedDate);
+                        },
+                        calendar.get(Calendar.YEAR),
+                        calendar.get(Calendar.MONTH),
+                        calendar.get(Calendar.DAY_OF_MONTH));
+                datePickerDialog.show();
+            });
+        } else {
+            profileAvatar.setOnClickListener(null);
+            profileBirthday.setOnClickListener(null);
+        }
+    }
+
+    private void showMediaPopup() {
+        PopupMenu popupMenu = new PopupMenu(MainActivity.this, profileAvatar);
+        popupMenu.getMenuInflater().inflate(R.menu.camera_menu, popupMenu.getMenu());
+        popupMenu.setOnMenuItemClickListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.camera_menu_camera) {
+                cameraLauncher.launch(new Intent(MediaStore.ACTION_IMAGE_CAPTURE));
+            } else if (itemId == R.id.camera_menu_gallery) {
+                galleryLauncher.launch(new Intent(
+                        Intent.ACTION_PICK,
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                ));
+            }
+            return true;
+        });
+        popupMenu.show();
+    }
+
+    private void saveProfileToDatabase(String userId) {
+        String name = profileUsername.getText().toString().trim();
+        String email = profileEmail.getText().toString().trim();
+        if (name.isEmpty() || email.isEmpty()) {
+            Toast.makeText(MainActivity.this, "Please fill username and email", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String birthday = profileBirthday.getText().toString().trim();
+        int gender = isMale.isChecked() ? 1 : 0;
+        String image = null;
+        Drawable drawable = profileAvatar.getDrawable();
+        if (drawable instanceof BitmapDrawable) {
+            Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
+            if (bitmap != null) {
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+                byte[] byteArray = byteArrayOutputStream.toByteArray();
+                image = Base64.encodeToString(byteArray, Base64.DEFAULT);
+            }
+        }
+        int rowsUpdated = userRepository.updateUserProfile(
+                Integer.parseInt(userId), name, birthday, email, image, gender
+        );
+        if (rowsUpdated > 0) {
+            Toast.makeText(MainActivity.this, "Update profile successfully!", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(MainActivity.this, "Fail to update Profile", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void setUpToolbar() {
@@ -315,7 +430,23 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         });
     }
 
-    private void setUpEagerFavoriteFragment() {
+    private void doSearchFavorites(String keyword) {
+        String userIdStr = sharedPreferences.getString(USER_ID, "");
+        if (userIdStr.isEmpty()) {
+            return;
+        }
+        int userId = Integer.parseInt(userIdStr);
+
+        MovieRepository repo = new MovieRepository(this);
+        List<Movie> searchResults = repo.getFavMoviesByKeyword(userId, keyword);
+
+        Fragment current = getSupportFragmentManager().findFragmentByTag(FRAGMENT_FAVORITE);
+        if (current instanceof FavoriteFragment) {
+            ((FavoriteFragment) current).showSearchResults(searchResults);
+        }
+    }
+
+    private void setUpBottomNavAndVisibleToolbar() {
         FavoriteFragment favoriteFragment = (FavoriteFragment) getSupportFragmentManager().findFragmentByTag(FRAGMENT_FAVORITE);
         if (favoriteFragment == null) {
             favoriteFragment = new FavoriteFragment();
@@ -325,24 +456,7 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
                     .commit();
         }
         setOnUpdateFavListListener(favoriteFragment);
-    }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 100) {
-            if (grantResults.length > 0
-                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "Camera permission granted!", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "Camera permission denied!", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
-    private void setUpBottomNavAndVisibleToolbar() {
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_nav);
         currentFragment = new ListMoviesFragment();
         getSupportFragmentManager().beginTransaction()
@@ -388,7 +502,6 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
             }
             return true;
         });
-
     }
 
     private Fragment getOrCreateFragment(Class<? extends Fragment> fragmentClass, String tag) {
@@ -412,134 +525,6 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         transaction.hide(currentFragment).show(newFragment).commit();
         currentFragment = newFragment;
     }
-    private void doSearchFavorites(String keyword) {
-        String userIdStr = sharedPreferences.getString(USER_ID, "");
-        if (userIdStr.isEmpty()) {
-            return;
-        }
-        int userId = Integer.parseInt(userIdStr);
-
-        MovieRepository repo = new MovieRepository(this);
-        List<Movie> searchResults = repo.getFavMoviesByKeyword(userId, keyword);
-
-        Fragment current = getSupportFragmentManager().findFragmentByTag(FRAGMENT_FAVORITE);
-        if (current instanceof FavoriteFragment) {
-            ((FavoriteFragment) current).showSearchResults(searchResults);
-        }
-    }
-
-    public void showBottomDialog(Context context) {
-        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(context);
-        bottomSheetDialog.setContentView(R.layout.dialog_login);
-        EditText inputEmail = bottomSheetDialog.findViewById(R.id.login_email);
-        EditText inputUsername = bottomSheetDialog.findViewById(R.id.login_username);
-        TextView btnSignIn = bottomSheetDialog.findViewById(R.id.login_submit);
-        if(btnSignIn == null){
-            return;
-        }
-        btnSignIn.setOnClickListener(v -> {
-            String email = (inputEmail != null ? inputEmail.getText().toString().trim() : "");
-            String username = (inputUsername != null ? inputUsername.getText().toString().trim() : "");
-            if (email.isEmpty() || username.isEmpty()) {
-                Toast.makeText(context, "Please input email and username", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            long userId = userRepository.login(username, null, email, null, null);
-            if (userId > 0) {
-                sharedPreferences.edit().putString(USER_ID, String.valueOf(userId)).apply();
-                Toast.makeText(context, "Login successfully!", Toast.LENGTH_SHORT).show();
-                setUpDrawer();
-                bottomSheetDialog.dismiss();
-                if (onUpdateFavListListener != null) {
-                    onUpdateFavListListener.onUpdateFavoriteList();
-                }
-
-                ListMoviesFragment listFragment = (ListMoviesFragment) getOrCreateFragment(ListMoviesFragment.class, FRAGMENT_MOVIE);
-                if (listFragment != null) {
-                    listFragment.refreshMovies();
-                }
-            }
-        });
-        bottomSheetDialog.show();
-    }
-
-    private void setProfileEditMode(boolean isEdit) {
-        isMale.setEnabled(isEdit);
-        isFemale.setEnabled(isEdit);
-        profileUsername.setEnabled(isEdit);
-        profileEmail.setEnabled(isEdit);
-        profileBirthday.setEnabled(isEdit);
-        btnLogout.setVisibility(isEdit ? View.GONE : View.VISIBLE);
-        btnEdit.setVisibility(isEdit ? View.GONE : View.VISIBLE);
-        btnSave.setVisibility(isEdit ? View.VISIBLE : View.GONE);
-        btnCancel.setVisibility(isEdit ? View.VISIBLE : View.GONE);
-        if (isEdit) {
-            profileAvatar.setOnClickListener(v -> showMediaPopup());
-            profileBirthday.setOnClickListener(v -> {
-                Calendar calendar = Calendar.getInstance();
-                DatePickerDialog datePickerDialog = new DatePickerDialog(MainActivity.this,
-                        (view, year, month, dayOfMonth) -> {
-                            String selectedDate = dayOfMonth + "/" + (month + 1) + "/" + year;
-                            profileBirthday.setText(selectedDate);
-                        },
-                        calendar.get(Calendar.YEAR),
-                        calendar.get(Calendar.MONTH),
-                        calendar.get(Calendar.DAY_OF_MONTH));
-                datePickerDialog.show();
-            });
-        } else {
-            profileAvatar.setOnClickListener(null);
-            profileBirthday.setOnClickListener(null);
-        }
-    }
-
-    private void showMediaPopup() {
-        PopupMenu popupMenu = new PopupMenu(MainActivity.this, profileAvatar);
-        popupMenu.getMenuInflater().inflate(R.menu.camera_menu, popupMenu.getMenu());
-        popupMenu.setOnMenuItemClickListener(item -> {
-            int itemId = item.getItemId();
-            if (itemId == R.id.camera_menu_camera) {
-                cameraLauncher.launch(new Intent(MediaStore.ACTION_IMAGE_CAPTURE));
-            } else if (itemId == R.id.camera_menu_gallery) {
-                galleryLauncher.launch(new Intent(
-                        Intent.ACTION_PICK,
-                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-                ));
-            }
-            return true;
-        });
-        popupMenu.show();
-    }
-
-    private void saveProfileToDatabase(String userId) {
-        String name = profileUsername.getText().toString().trim();
-        String email = profileEmail.getText().toString().trim();
-        if (name.isEmpty() || email.isEmpty()) {
-            Toast.makeText(MainActivity.this, "Please fill username and email", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        String birthday = profileBirthday.getText().toString().trim();
-        int gender = isMale.isChecked() ? 1 : 0;
-        String image = null;
-        Drawable drawable = profileAvatar.getDrawable();
-        if (drawable instanceof BitmapDrawable) {
-            Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
-            if (bitmap != null) {
-                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
-                byte[] byteArray = byteArrayOutputStream.toByteArray();
-                image = Base64.encodeToString(byteArray, Base64.DEFAULT);
-            }
-        }
-        int rowsUpdated = userRepository.updateUserProfile(
-                Integer.parseInt(userId), name, birthday, email, image, gender
-        );
-        if (rowsUpdated > 0) {
-            Toast.makeText(MainActivity.this, "Update profile successfully!", Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(MainActivity.this, "Fail to update Profile", Toast.LENGTH_SHORT).show();
-        }
-    }
 
     @Override
     public void onLoginRequested() {
@@ -558,7 +543,6 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         setDetailDisplay(true);
 
         MovieDetailFragment detailFragment = MovieDetailFragment.newInstance(movieId, movieTitle);
-
         getSupportFragmentManager().beginTransaction()
                 .replace(R.id.detail_frame_container, detailFragment, "MovieDetail")
                 .addToBackStack("Detail")
@@ -574,6 +558,7 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
             }
         });
     }
+
     public void reloadDrawerReminders() {
         View headerView = navigationView.getHeaderView(0);
         if (headerView != null) {
@@ -591,6 +576,9 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
 
 
     public void updateFavoriteListDirectly(Movie movie, MovieAdapter.TYPE type) {
+        MovieRepository movieRepository = new MovieRepository(MainActivity.this);
+        movieRepository.handleClickFavMovie(movie);
+
         if(type == null){
             FavoriteFragment favFragment = (FavoriteFragment) getOrCreateFragment(FavoriteFragment.class, FRAGMENT_FAVORITE);
             if (favFragment != null) {
@@ -600,8 +588,7 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
             if (listFragment != null) {
                 listFragment.updateItemStarFav(movie.getId());
             }
-        }
-        else if (type.equals(MovieAdapter.TYPE.LIST)) {
+        } else if (type.equals(MovieAdapter.TYPE.LIST)) {
             FavoriteFragment favFragment = (FavoriteFragment) getOrCreateFragment(FavoriteFragment.class, FRAGMENT_FAVORITE);
             if (favFragment != null) {
                 favFragment.onUpdateFavoriteList();
@@ -645,4 +632,19 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
                     }
                 }
             });
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 100) {
+            if (grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Camera permission granted!", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Camera permission denied!", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
 }

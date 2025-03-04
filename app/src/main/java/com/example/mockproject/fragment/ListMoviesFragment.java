@@ -2,15 +2,15 @@ package com.example.mockproject.fragment;
 
 
 import static com.example.mockproject.BuildConfig.API_KEY;
-import static com.example.mockproject.Constants.KEY_MOVIE_TYPE;
-import static com.example.mockproject.Constants.KEY_RATING_FILTER;
-import static com.example.mockproject.Constants.KEY_RELEASE_YEAR_FILTER;
-import static com.example.mockproject.Constants.KEY_SORT_OPTION;
-import static com.example.mockproject.Constants.SHARE_KEY;
-import static com.example.mockproject.Constants.TYPE_NOW_PLAYING;
-import static com.example.mockproject.Constants.TYPE_POPULAR;
-import static com.example.mockproject.Constants.TYPE_TOP_RATED;
-import static com.example.mockproject.Constants.TYPE_UPCOMING;
+import static com.example.mockproject.utils.Constants.KEY_MOVIE_TYPE;
+import static com.example.mockproject.utils.Constants.KEY_RATING_FILTER;
+import static com.example.mockproject.utils.Constants.KEY_RELEASE_YEAR_FILTER;
+import static com.example.mockproject.utils.Constants.KEY_SORT_OPTION;
+import static com.example.mockproject.utils.Constants.SHARE_KEY;
+import static com.example.mockproject.utils.Constants.TYPE_NOW_PLAYING;
+import static com.example.mockproject.utils.Constants.TYPE_POPULAR;
+import static com.example.mockproject.utils.Constants.TYPE_TOP_RATED;
+import static com.example.mockproject.utils.Constants.TYPE_UPCOMING;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -33,7 +33,7 @@ import com.example.mockproject.api.ApiClient;
 import com.example.mockproject.api.MovieApiService;
 import com.example.mockproject.entities.Movie;
 import com.example.mockproject.entities.MovieResponse;
-import com.example.mockproject.fragment.adapter.MovieAdapter;
+import com.example.mockproject.adapter.MovieAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -78,8 +78,8 @@ public class ListMoviesFragment extends Fragment  {
                 }
             }
         });
-        prefs = requireContext().getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
 
+        prefs = requireContext().getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
         prefListener = (sharedPreferences, key) -> {
             if (key != null &&
                     (key.equals(KEY_MOVIE_TYPE)

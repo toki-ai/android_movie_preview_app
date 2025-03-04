@@ -1,7 +1,12 @@
 package com.example.mockproject.receiver;
 
-import static com.example.mockproject.Constants.SHARE_KEY;
-import static com.example.mockproject.Constants.USER_ID;
+import static com.example.mockproject.utils.Constants.RECEIVER_MOVIE_RATING;
+import static com.example.mockproject.utils.Constants.RECEIVER_MOVIE_TITLE;
+import static com.example.mockproject.utils.Constants.RECEIVER_MOVIE_YEAR;
+import static com.example.mockproject.utils.Constants.RECEIVER_TIME;
+import static com.example.mockproject.utils.Constants.RECEIVER_USER_ID;
+import static com.example.mockproject.utils.Constants.SHARE_KEY;
+import static com.example.mockproject.utils.Constants.USER_ID;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -31,14 +36,14 @@ public class ReminderReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         SharedPreferences prefs = context.getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
         int currentUserId = Integer.parseInt(prefs.getString(USER_ID, "0"));
-        int reminderUserId = intent.getIntExtra("USER_ID", 0);
+        int reminderUserId = intent.getIntExtra(RECEIVER_USER_ID, 0);
         if (currentUserId != reminderUserId) {
             return;
         }
-        String movieTitle = intent.getStringExtra("MOVIE_TITLE");
-        long reminderTime = intent.getLongExtra("reminder_time", 0);
-        String movieRating = intent.getStringExtra("MOVIE_RATING");
-        String movieYear = intent.getStringExtra("MOVIE_YEAR");
+        String movieTitle = intent.getStringExtra(RECEIVER_MOVIE_TITLE);
+        long reminderTime = intent.getLongExtra(RECEIVER_TIME, 0);
+        String movieRating = intent.getStringExtra(RECEIVER_MOVIE_RATING);
+        String movieYear = intent.getStringExtra(RECEIVER_MOVIE_YEAR);
 
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
         String formattedTime = sdf.format(new Date(reminderTime));

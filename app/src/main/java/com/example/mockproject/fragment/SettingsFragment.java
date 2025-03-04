@@ -1,16 +1,16 @@
 package com.example.mockproject.fragment;
 
-import static com.example.mockproject.Constants.KEY_MOVIE_TYPE;
-import static com.example.mockproject.Constants.KEY_RATING_FILTER;
-import static com.example.mockproject.Constants.KEY_RELEASE_YEAR_FILTER;
-import static com.example.mockproject.Constants.KEY_SORT_OPTION;
-import static com.example.mockproject.Constants.SHARE_KEY;
-import static com.example.mockproject.Constants.SORT_RATING;
-import static com.example.mockproject.Constants.SORT_RELEASE_DATE;
-import static com.example.mockproject.Constants.TYPE_NOW_PLAYING;
-import static com.example.mockproject.Constants.TYPE_POPULAR;
-import static com.example.mockproject.Constants.TYPE_TOP_RATED;
-import static com.example.mockproject.Constants.TYPE_UPCOMING;
+import static com.example.mockproject.utils.Constants.KEY_MOVIE_TYPE;
+import static com.example.mockproject.utils.Constants.KEY_RATING_FILTER;
+import static com.example.mockproject.utils.Constants.KEY_RELEASE_YEAR_FILTER;
+import static com.example.mockproject.utils.Constants.KEY_SORT_OPTION;
+import static com.example.mockproject.utils.Constants.SHARE_KEY;
+import static com.example.mockproject.utils.Constants.SORT_RATING;
+import static com.example.mockproject.utils.Constants.SORT_RELEASE_DATE;
+import static com.example.mockproject.utils.Constants.TYPE_NOW_PLAYING;
+import static com.example.mockproject.utils.Constants.TYPE_POPULAR;
+import static com.example.mockproject.utils.Constants.TYPE_TOP_RATED;
+import static com.example.mockproject.utils.Constants.TYPE_UPCOMING;
 
 import android.content.Context;
 import android.content.SharedPreferences;

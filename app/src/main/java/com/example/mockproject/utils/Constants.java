@@ -1,4 +1,4 @@
-package com.example.mockproject;
+package com.example.mockproject.utils;
 
 public class Constants {
     public static final String SHARE_KEY = "mock_prj";
@@ -17,4 +17,9 @@ public class Constants {
     public static final String FRAGMENT_FAVORITE = "Favorites";
     public static final String FRAGMENT_SETTING = "Settings";
     public static final String FRAGMENT_ABOUT = "About";
+    public static final String RECEIVER_TIME = "reminder_time";
+    public static final String RECEIVER_USER_ID = "receiver_user_id";
+    public static final String RECEIVER_MOVIE_TITLE = "receiver_movie_title";
+    public static final String RECEIVER_MOVIE_RATING = "receiver_movie_rating";
+    public static final String RECEIVER_MOVIE_YEAR = "receiver_movie_year";
 }

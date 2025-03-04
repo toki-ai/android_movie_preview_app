@@ -1,4 +1,4 @@
-package com.example.mockproject.fragment.adapter;
+package com.example.mockproject.adapter;
 
 import android.view.LayoutInflater;
 import android.view.View;
