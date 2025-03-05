@@ -66,6 +66,7 @@ import com.example.mockproject.fragment.SettingsFragment;
 import com.example.mockproject.adapter.MovieAdapter;
 import com.example.mockproject.adapter.ReminderAdapter;
 import com.example.mockproject.utils.Utils;
+import com.google.android.material.badge.BadgeDrawable;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.navigation.NavigationView;
@@ -462,7 +463,7 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         getSupportFragmentManager().beginTransaction()
                 .add(R.id.frame_container, currentFragment, FRAGMENT_MOVIE)
                 .commit();
-
+        updateFavoriteBadge();
         bottomNavigationView.setOnItemSelectedListener(item -> {
             setDetailDisplay(false);
             Fragment selectedFragment = null;
@@ -502,6 +503,27 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
             }
             return true;
         });
+    }
+
+    private void updateFavoriteBadge() {
+        String userIdStr = sharedPreferences.getString(USER_ID, "");
+        BottomNavigationView bottomNav = findViewById(R.id.bottom_nav);
+        BadgeDrawable badgeDrawable = bottomNav.getOrCreateBadge(R.id.nav_favorite);
+        if (userIdStr.isEmpty()) {
+            badgeDrawable.clearNumber();
+            badgeDrawable.setVisible(false);
+            return;
+        }
+        int userId = Integer.parseInt(userIdStr);
+        MovieRepository movieRepository = new MovieRepository(this);
+        int favoriteCount = movieRepository.getFavMoviesByUserId(userId).size();
+        if (favoriteCount > 0) {
+            badgeDrawable.setNumber(favoriteCount);
+            badgeDrawable.setVisible(true);
+        } else {
+            badgeDrawable.clearNumber();
+            badgeDrawable.setVisible(false);
+        }
     }
 
     private Fragment getOrCreateFragment(Class<? extends Fragment> fragmentClass, String tag) {
@@ -578,7 +600,7 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
     public void updateFavoriteListDirectly(Movie movie, MovieAdapter.TYPE type) {
         MovieRepository movieRepository = new MovieRepository(MainActivity.this);
         movieRepository.handleClickFavMovie(movie);
-
+        updateFavoriteBadge();
         if(type == null){
             FavoriteFragment favFragment = (FavoriteFragment) getOrCreateFragment(FavoriteFragment.class, FRAGMENT_FAVORITE);
             if (favFragment != null) {
