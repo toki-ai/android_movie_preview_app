@@ -61,6 +61,7 @@ public class ListMoviesFragment extends Fragment  {
 
         recyclerView = view.findViewById(R.id.recyclerView);
         movieAdapter = new MovieAdapter(new ArrayList<>(), isGrid, getContext(), MovieAdapter.TYPE.LIST);
+        movieAdapter.setCallback(requireContext());
         recyclerView.setAdapter(movieAdapter);
         recyclerView.addItemDecoration(new DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL));
         updateLayoutManager();
@@ -113,6 +114,7 @@ public class ListMoviesFragment extends Fragment  {
         isGrid = !isGrid;
         updateLayoutManager();
         movieAdapter = new MovieAdapter(movieAdapter.getMovies(), isGrid, getContext(), MovieAdapter.TYPE.LIST);
+        movieAdapter.setCallback(requireContext());
         recyclerView.setAdapter(movieAdapter);
     }
 

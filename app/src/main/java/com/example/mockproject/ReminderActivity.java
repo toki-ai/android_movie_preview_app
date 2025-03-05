@@ -4,6 +4,7 @@ import static com.example.mockproject.utils.Constants.SHARE_KEY;
 import static com.example.mockproject.utils.Constants.USER_ID;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.ImageButton;
@@ -14,6 +15,7 @@ import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.mockproject.callback.OnOpenMovieDetailListener;
 import com.example.mockproject.database.ReminderRepository;
 import com.example.mockproject.entities.Reminder;
 import com.example.mockproject.adapter.ReminderAdapter;
@@ -21,7 +23,7 @@ import com.example.mockproject.adapter.ReminderAdapter;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ReminderActivity extends AppCompatActivity  {
+public class ReminderActivity extends AppCompatActivity implements OnOpenMovieDetailListener {
 
     private ReminderAdapter reminderAdapter;
     private List<Reminder> reminderList;
@@ -46,7 +48,7 @@ public class ReminderActivity extends AppCompatActivity  {
             reminderList = new ArrayList<>();
         }
 
-        reminderAdapter = new ReminderAdapter(this, reminderList);
+        reminderAdapter = new ReminderAdapter(this, this, reminderList);
 
         recyclerView.setAdapter(reminderAdapter);
     }
@@ -68,5 +70,14 @@ public class ReminderActivity extends AppCompatActivity  {
         } else {
             Toast.makeText(this, "Delete reminder failed.", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    @Override
+    public void onOpenMovieDetail(int movieId, String movieTitle) {
+        Intent intent = new Intent(ReminderActivity.this, MainActivity.class);
+        intent.putExtra("MOVIE_ID", movieId);
+        intent.putExtra("MOVIE_TITLE", movieTitle);
+        intent.putExtra("FROM_REMINDER", true);
+        startActivity(intent);
     }
 }

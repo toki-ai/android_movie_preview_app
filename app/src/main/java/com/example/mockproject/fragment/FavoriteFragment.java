@@ -19,7 +19,6 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.example.mockproject.callback.OnLoginRequestListener;
-import com.example.mockproject.callback.OnUpdateFavoriteListListener;
 import com.example.mockproject.R;
 import com.example.mockproject.database.MovieRepository;
 import com.example.mockproject.entities.Movie;
@@ -28,7 +27,7 @@ import com.example.mockproject.adapter.MovieAdapter;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FavoriteFragment extends Fragment implements OnUpdateFavoriteListListener {
+public class FavoriteFragment extends Fragment {
     private OnLoginRequestListener loginRequestListener;
     private MovieRepository movieRepository;
     private SharedPreferences sharedPreferences;
@@ -58,13 +57,14 @@ public class FavoriteFragment extends Fragment implements OnUpdateFavoriteListLi
         btnLogin = view.findViewById(R.id.fav_btn_login);
 
         favMovieAdapter = new MovieAdapter(new ArrayList<>(), false, getContext(), MovieAdapter.TYPE.FAV);
+        favMovieAdapter.setCallback(requireContext());
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(favMovieAdapter);
         recyclerView.addItemDecoration(new DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL));
         if(userId.isEmpty()){
-            onUpdateFavoriteUILogin();
+            updateFavoriteUILogin();
         }else{
-            onUpdateFavoriteList();
+            updateFavoriteList();
         }
         return  view;
     }
@@ -78,8 +78,7 @@ public class FavoriteFragment extends Fragment implements OnUpdateFavoriteListLi
         favMovieAdapter.updateMovies(searchResults);
     }
 
-    @Override
-    public void onUpdateFavoriteList() {
+    public void updateFavoriteList() {
         setLoginMode(false);
         String userId = sharedPreferences.getString(USER_ID, "");
         if (userId.isEmpty()) {
@@ -89,8 +88,7 @@ public class FavoriteFragment extends Fragment implements OnUpdateFavoriteListLi
         favMovieAdapter.updateMovies(favMovies);
     }
 
-    @Override
-    public void onUpdateFavoriteUILogin() {
+    public void updateFavoriteUILogin() {
         setLoginMode(true);
         btnLogin.setOnClickListener(v -> {
             if (loginRequestListener != null) {

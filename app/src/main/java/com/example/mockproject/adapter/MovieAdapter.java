@@ -17,9 +17,10 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.mockproject.MainActivity;
 import com.example.mockproject.R;
 import com.example.mockproject.callback.OnLoginRequestListener;
+import com.example.mockproject.callback.OnOpenMovieDetailListener;
+import com.example.mockproject.callback.OnUpdateMoviesListener;
 import com.example.mockproject.database.MovieRepository;
 import com.example.mockproject.entities.Movie;
 import com.squareup.picasso.Picasso;
@@ -38,9 +39,18 @@ public class MovieAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     private static final int PAGE_SIZE = 20;
     private final TYPE type;
     private final Context context;
+    private OnUpdateMoviesListener onUpdateMoviesListener;
+    private OnLoginRequestListener onLoginRequestListener;
+    private OnOpenMovieDetailListener onOpenMovieDetailListener;
 
     public enum TYPE {
         LIST, FAV
+    }
+
+    public void setCallback(Context context){
+        this.onUpdateMoviesListener = (OnUpdateMoviesListener) context;
+        this.onLoginRequestListener = (OnLoginRequestListener) context;
+        this.onOpenMovieDetailListener = (OnOpenMovieDetailListener) context;
     }
 
     public MovieAdapter(List<Movie> movies, boolean isGrid, Context context, TYPE type) {
@@ -129,9 +139,7 @@ public class MovieAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 movieHolder.btnMovieFavorite.setOnClickListener(v -> {
                     if (userId.isEmpty()) {
                         Toast.makeText(context, "You need to login to add favorites", Toast.LENGTH_SHORT).show();
-                        if (context instanceof OnLoginRequestListener) {
-                            ((OnLoginRequestListener) context).onLoginRequested();
-                        }
+                        onLoginRequestListener.onLoginRequested();
                         return;
                     }
                     if (type.equals(TYPE.LIST)) {
@@ -140,23 +148,19 @@ public class MovieAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                                 movie.isFav() ? R.drawable.icon_movie_star : R.drawable.icon_movie_start_outline
                         );
                         notifyItemChanged(position);
+                        onUpdateMoviesListener.onUpdateMoviesFromList(movie);
                     } else if (type.equals(TYPE.FAV)) {
                         int indexToRemove = movies.indexOf(movie);
                         if (indexToRemove != -1) {
                             movies.remove(indexToRemove);
                             notifyItemRemoved(indexToRemove);
                         }
-                    }
-                    if (context instanceof MainActivity) {
-                        ((MainActivity) context).updateFavoriteListDirectly(movie, type);
+                        onUpdateMoviesListener.onUpdateMoviesFromFavorite(movie);
                     }
                 });
             }
-            movieHolder.itemView.setOnClickListener(v -> {
-                if (context instanceof MainActivity) {
-                    ((MainActivity) context).openDetailFragment(movie.getId(), movie.getTitle());
-                }
-            });
+
+            //movieHolder.itemView.setOnClickListener(v -> onOpenMovieDetailListener.onOpenMovieDetail(movie.getId(), movie.getTitle()));
         } else {
             LoadingViewHolder loadingHolder = (LoadingViewHolder) holder;
             loadingHolder.progressBar.setIndeterminate(true);

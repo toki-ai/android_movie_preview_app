@@ -51,7 +51,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mockproject.callback.OnLoginRequestListener;
-import com.example.mockproject.callback.OnUpdateFavoriteListListener;
+import com.example.mockproject.callback.OnOpenMovieDetailListener;
+import com.example.mockproject.callback.OnUpdateMoviesListener;
 import com.example.mockproject.database.MovieRepository;
 import com.example.mockproject.database.ReminderRepository;
 import com.example.mockproject.database.UserRepository;
@@ -63,7 +64,6 @@ import com.example.mockproject.fragment.FavoriteFragment;
 import com.example.mockproject.fragment.ListMoviesFragment;
 import com.example.mockproject.fragment.MovieDetailFragment;
 import com.example.mockproject.fragment.SettingsFragment;
-import com.example.mockproject.adapter.MovieAdapter;
 import com.example.mockproject.adapter.ReminderAdapter;
 import com.example.mockproject.utils.Utils;
 import com.google.android.material.badge.BadgeDrawable;
@@ -76,10 +76,9 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Objects;
 
-public class MainActivity extends AppCompatActivity implements OnLoginRequestListener {
+public class MainActivity extends AppCompatActivity implements OnLoginRequestListener, OnUpdateMoviesListener, OnOpenMovieDetailListener {
 
     private Fragment currentFragment;
-    private OnUpdateFavoriteListListener onUpdateFavListListener;
     private UserRepository userRepository;
     private SharedPreferences sharedPreferences;
     private FrameLayout detailFrameContainer, frameContainer;
@@ -92,9 +91,20 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
     private NavigationView navigationView;
     private boolean isSearching = false;
     private final String logText = "Main Activity";
+    private MovieRepository movieRepository;
+    private boolean isFromReminder = false;
 
-    public void setOnUpdateFavListListener(OnUpdateFavoriteListListener listener) {
-        this.onUpdateFavListListener = listener;
+    private void handleReminderIntentIfNeeded(Intent intent) {
+        if (intent != null && intent.getBooleanExtra("FROM_REMINDER", false)) {
+            isFromReminder = true;
+            int movieId = intent.getIntExtra("MOVIE_ID", 0);
+            String movieTitle = intent.getStringExtra("MOVIE_TITLE");
+            onOpenMovieDetail(movieId, movieTitle);
+
+            intent.removeExtra("FROM_REMINDER");
+            intent.removeExtra("MOVIE_ID");
+            intent.removeExtra("MOVIE_TITLE");
+        }
     }
 
     @Override
@@ -108,10 +118,13 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         //sharedPreferences.edit().clear().apply();
         detailFrameContainer = findViewById(R.id.detail_frame_container);
         frameContainer = findViewById(R.id.frame_container);
+        movieRepository = new MovieRepository(MainActivity.this);
 
         setUpDrawer();
         setUpToolbar();
         setUpBottomNavAndVisibleToolbar();
+        Intent intent = getIntent();
+        handleReminderIntentIfNeeded(intent);
     }
 
     private void setUpDrawer() {
@@ -168,8 +181,9 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
                 setUpDrawer();
                 bottomSheetDialog.dismiss();
 
-                if (onUpdateFavListListener != null) {
-                    onUpdateFavListListener.onUpdateFavoriteList();
+                FavoriteFragment favFragment = (FavoriteFragment) getOrCreateFragment(FavoriteFragment.class, FRAGMENT_FAVORITE);
+                if (favFragment != null) {
+                    favFragment.updateFavoriteList();
                 }
 
                 ListMoviesFragment listFragment = (ListMoviesFragment) getOrCreateFragment(ListMoviesFragment.class, FRAGMENT_MOVIE);
@@ -226,7 +240,7 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         } else {
             shortList = allReminders;
         }
-        ReminderAdapter reminderAdapter = new ReminderAdapter(this, shortList);
+        ReminderAdapter reminderAdapter = new ReminderAdapter(this,this, shortList);
         reminderRecycler.addItemDecoration(new DividerItemDecoration(MainActivity.this, DividerItemDecoration.VERTICAL));
         reminderRecycler.setAdapter(reminderAdapter);
 
@@ -238,8 +252,9 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         btnLogout.setOnClickListener(v -> {
             sharedPreferences.edit().remove(USER_ID).apply();
             Toast.makeText(MainActivity.this, "Logout successfully!", Toast.LENGTH_SHORT).show();
-            if (onUpdateFavListListener != null) {
-                onUpdateFavListListener.onUpdateFavoriteUILogin();
+            FavoriteFragment favFragment = (FavoriteFragment) getOrCreateFragment(FavoriteFragment.class, FRAGMENT_FAVORITE);
+            if (favFragment != null) {
+                favFragment.updateFavoriteUILogin();
             }
             setUpDrawer();
             ListMoviesFragment listFragment = (ListMoviesFragment) getOrCreateFragment(ListMoviesFragment.class, FRAGMENT_MOVIE);
@@ -438,8 +453,7 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         }
         int userId = Integer.parseInt(userIdStr);
 
-        MovieRepository repo = new MovieRepository(this);
-        List<Movie> searchResults = repo.getFavMoviesByKeyword(userId, keyword);
+        List<Movie> searchResults = movieRepository.getFavMoviesByKeyword(userId, keyword);
 
         Fragment current = getSupportFragmentManager().findFragmentByTag(FRAGMENT_FAVORITE);
         if (current instanceof FavoriteFragment) {
@@ -448,15 +462,6 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
     }
 
     private void setUpBottomNavAndVisibleToolbar() {
-        FavoriteFragment favoriteFragment = (FavoriteFragment) getSupportFragmentManager().findFragmentByTag(FRAGMENT_FAVORITE);
-        if (favoriteFragment == null) {
-            favoriteFragment = new FavoriteFragment();
-            getSupportFragmentManager().beginTransaction()
-                    .add(R.id.frame_container, favoriteFragment, FRAGMENT_FAVORITE)
-                    .hide(favoriteFragment)
-                    .commit();
-        }
-        setOnUpdateFavListListener(favoriteFragment);
 
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_nav);
         currentFragment = new ListMoviesFragment();
@@ -515,7 +520,6 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
             return;
         }
         int userId = Integer.parseInt(userIdStr);
-        MovieRepository movieRepository = new MovieRepository(this);
         int favoriteCount = movieRepository.getFavMoviesByUserId(userId).size();
         if (favoriteCount > 0) {
             badgeDrawable.setNumber(favoriteCount);
@@ -561,26 +565,6 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         toolbarBurger.setVisibility(isDisplay ? View.GONE : View.VISIBLE);
     }
 
-    public void openDetailFragment(int movieId, String movieTitle) {
-        setDetailDisplay(true);
-
-        MovieDetailFragment detailFragment = MovieDetailFragment.newInstance(movieId, movieTitle);
-        getSupportFragmentManager().beginTransaction()
-                .replace(R.id.detail_frame_container, detailFragment, "MovieDetail")
-                .addToBackStack("Detail")
-                .commit();
-        toolbarTitle.setText(movieTitle);
-
-        toolbarBack.setOnClickListener(v -> {
-            setDetailDisplay(false);
-            if (currentFragment instanceof ListMoviesFragment){
-                toolbarTitle.setText(FRAGMENT_MOVIE);
-            }else if (currentFragment instanceof FavoriteFragment){
-                toolbarTitle.setText(FRAGMENT_ABOUT);
-            }
-        });
-    }
-
     public void reloadDrawerReminders() {
         View headerView = navigationView.getHeaderView(0);
         if (headerView != null) {
@@ -591,34 +575,8 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
             int userId = Integer.parseInt(userIdStr);
             List<Reminder> allReminders = reminderRepository.getRemindersByUser(userId);
             List<Reminder> shortList = (allReminders.size() > 3) ? allReminders.subList(0, 3) : allReminders;
-            ReminderAdapter reminderAdapter = new ReminderAdapter(this, shortList);
+            ReminderAdapter reminderAdapter = new ReminderAdapter(this,this, shortList);
             reminderRecycler.setAdapter(reminderAdapter);
-        }
-    }
-
-    public void updateFavoriteListDirectly(Movie movie, MovieAdapter.TYPE type) {
-        MovieRepository movieRepository = new MovieRepository(MainActivity.this);
-        movieRepository.handleClickFavMovie(movie);
-        updateFavoriteBadge();
-        if(type == null){
-            FavoriteFragment favFragment = (FavoriteFragment) getOrCreateFragment(FavoriteFragment.class, FRAGMENT_FAVORITE);
-            if (favFragment != null) {
-                favFragment.onUpdateFavoriteList();
-            }
-            ListMoviesFragment listFragment = (ListMoviesFragment) getOrCreateFragment(ListMoviesFragment.class, FRAGMENT_MOVIE);
-            if (listFragment != null) {
-                listFragment.updateItemStarFav(movie.getId());
-            }
-        } else if (type.equals(MovieAdapter.TYPE.LIST)) {
-            FavoriteFragment favFragment = (FavoriteFragment) getOrCreateFragment(FavoriteFragment.class, FRAGMENT_FAVORITE);
-            if (favFragment != null) {
-                favFragment.onUpdateFavoriteList();
-            }
-        } else if (type.equals(MovieAdapter.TYPE.FAV)) {
-            ListMoviesFragment listFragment = (ListMoviesFragment) getOrCreateFragment(ListMoviesFragment.class, FRAGMENT_MOVIE);
-            if (listFragment != null) {
-                listFragment.updateItemStarFav(movie.getId());
-            }
         }
     }
 
@@ -667,5 +625,68 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
                 Toast.makeText(this, "Camera permission denied!", Toast.LENGTH_SHORT).show();
             }
         }
+    }
+
+    @Override
+    public void onUpdateMoviesFromFavorite(Movie movie) {
+        movieRepository.handleClickFavMovie(movie);
+        updateFavoriteBadge();
+
+        ListMoviesFragment listFragment = (ListMoviesFragment) getOrCreateFragment(ListMoviesFragment.class, FRAGMENT_MOVIE);
+        if (listFragment != null) {
+            listFragment.updateItemStarFav(movie.getId());
+        }
+    }
+
+    @Override
+    public void onUpdateMoviesFromList(Movie movie) {
+        movieRepository.handleClickFavMovie(movie);
+        updateFavoriteBadge();
+
+        FavoriteFragment favFragment = (FavoriteFragment) getOrCreateFragment(FavoriteFragment.class, FRAGMENT_FAVORITE);
+        if (favFragment != null) {
+            favFragment.updateFavoriteList();
+        }
+    }
+
+    @Override
+    public void onUpdateMoviesFromDetail(Movie movie) {
+        movieRepository.handleClickFavMovie(movie);
+        updateFavoriteBadge();
+
+        FavoriteFragment favFragment = (FavoriteFragment) getOrCreateFragment(FavoriteFragment.class, FRAGMENT_FAVORITE);
+        if (favFragment != null) {
+            favFragment.updateFavoriteList();
+        }
+        ListMoviesFragment listFragment = (ListMoviesFragment) getOrCreateFragment(ListMoviesFragment.class, FRAGMENT_MOVIE);
+        if (listFragment != null) {
+            listFragment.updateItemStarFav(movie.getId());
+        }
+    }
+
+    @Override
+    public void onOpenMovieDetail(int movieId, String movieTitle) {
+        setDetailDisplay(true);
+
+        MovieDetailFragment detailFragment = MovieDetailFragment.newInstance(movieId, movieTitle, MainActivity.this);
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.detail_frame_container, detailFragment, "MovieDetail")
+                .addToBackStack("Detail")
+                .commit();
+        toolbarTitle.setText(movieTitle);
+        drawerLayout.closeDrawer(navigationView);
+        toolbarBack.setOnClickListener(v -> {
+            if (isFromReminder) {
+                isFromReminder = false;
+                finish();
+            } else {
+                setDetailDisplay(false);
+                if (currentFragment instanceof ListMoviesFragment) {
+                    toolbarTitle.setText(FRAGMENT_MOVIE);
+                } else if (currentFragment instanceof FavoriteFragment) {
+                    toolbarTitle.setText(FRAGMENT_ABOUT);
+                }
+            }
+        });
     }
 }

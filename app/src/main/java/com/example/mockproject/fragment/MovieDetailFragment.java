@@ -43,6 +43,7 @@ import com.example.mockproject.R;
 import com.example.mockproject.api.ApiClient;
 import com.example.mockproject.api.MovieApiService;
 import com.example.mockproject.callback.OnLoginRequestListener;
+import com.example.mockproject.callback.OnUpdateMoviesListener;
 import com.example.mockproject.database.MovieRepository;
 import com.example.mockproject.database.ReminderRepository;
 import com.example.mockproject.entities.CreditResponse;
@@ -77,9 +78,10 @@ public class MovieDetailFragment extends Fragment {
     private Movie currentMovie;
     private int userId;
     private MovieRepository movieRepository;
+    private final OnUpdateMoviesListener onUpdateMoviesListener;
 
-    public static MovieDetailFragment newInstance(int movieId, String movieTitle) {
-        MovieDetailFragment fragment = new MovieDetailFragment();
+    public static MovieDetailFragment newInstance(int movieId, String movieTitle, Context context) {
+        MovieDetailFragment fragment = new MovieDetailFragment(context);
         Bundle args = new Bundle();
         args.putInt(ARG_MOVIE_ID, movieId);
         args.putString(ARG_MOVIE_TITLE, movieTitle);
@@ -87,7 +89,9 @@ public class MovieDetailFragment extends Fragment {
         return fragment;
     }
 
-    public MovieDetailFragment() {}
+    public MovieDetailFragment(Context context) {
+        this.onUpdateMoviesListener = (OnUpdateMoviesListener) context;
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -146,9 +150,7 @@ public class MovieDetailFragment extends Fragment {
             }
             if (currentMovie != null) {
                 currentMovie.setFav(!currentMovie.isFav());
-                if (getActivity() instanceof MainActivity) {
-                    ((MainActivity) getActivity()).updateFavoriteListDirectly(currentMovie, null);
-                }
+                onUpdateMoviesListener.onUpdateMoviesFromDetail(currentMovie);
                 detailBtnFav.setImageResource(
                         currentMovie.isFav() ? R.drawable.icon_movie_star : R.drawable.icon_movie_start_outline
                 );
