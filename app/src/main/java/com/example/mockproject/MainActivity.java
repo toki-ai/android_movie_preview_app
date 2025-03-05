@@ -596,7 +596,6 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         }
     }
 
-
     public void updateFavoriteListDirectly(Movie movie, MovieAdapter.TYPE type) {
         MovieRepository movieRepository = new MovieRepository(MainActivity.this);
         movieRepository.handleClickFavMovie(movie);

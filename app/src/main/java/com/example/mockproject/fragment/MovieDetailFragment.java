@@ -68,7 +68,8 @@ public class MovieDetailFragment extends Fragment {
     private String movieTitle, movieImage, movieYear;
     private float movieRating;
     private ImageView detailPoster, detailBtnFav, detailAdultIcon;
-    private TextView detailReleaseDate, detailRating, detailOverview;
+    private TextView detailReleaseDate, detailRating, detailOverview, detailReminderInfo;
+
     private androidx.recyclerview.widget.RecyclerView detailCrewList;
 
     private MovieApiService movieApiService;
@@ -118,6 +119,8 @@ public class MovieDetailFragment extends Fragment {
         detailOverview = view.findViewById(R.id.detail_overview);
         detailCrewList = view.findViewById(R.id.detail_crew_list);
         detailAdultIcon = view.findViewById(R.id.detail_adult_icon);
+        detailReminderInfo = view.findViewById(R.id.detail_reminder_info);
+        checkExistingReminder();
 
         detailCrewList.setLayoutManager(
                 new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false)
@@ -151,6 +154,35 @@ public class MovieDetailFragment extends Fragment {
                 );
             }
         });
+    }
+    private void checkExistingReminder() {
+        SharedPreferences sharedPreferences = requireActivity().getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
+        String userIdStr = sharedPreferences.getString(USER_ID, "0");
+        userId = Integer.parseInt(userIdStr);
+        if (userId == 0) {
+            detailReminderInfo.setText("Please login to set reminder");
+            return;
+        }
+        ReminderRepository reminderRepository = new ReminderRepository(getContext());
+        Reminder reminder = reminderRepository.getReminderForUserAndMovie(userId, movieId);
+        if (reminder != null) {
+            long timeInMillis = Long.parseLong(reminder.getTime());
+            String formatted = formatTime(timeInMillis);
+            detailReminderInfo.setText("Reminder set for " + formatted);
+        } else {
+            detailReminderInfo.setText("No reminder set");
+        }
+    }
+
+    private String formatTime(long timeInMillis) {
+        Calendar c = Calendar.getInstance();
+        c.setTimeInMillis(timeInMillis);
+        int year = c.get(Calendar.YEAR);
+        int month = c.get(Calendar.MONTH) + 1;
+        int day = c.get(Calendar.DAY_OF_MONTH);
+        int hour = c.get(Calendar.HOUR_OF_DAY);
+        int minute = c.get(Calendar.MINUTE);
+        return String.format("%02d/%02d/%d %02d:%02d", day, month, year, hour, minute);
     }
 
     private final ActivityResultLauncher<String> requestNotificationPermissionLauncher =
@@ -226,6 +258,7 @@ public class MovieDetailFragment extends Fragment {
                                     if (alarmManager != null) {
                                         alarmManager.setExact(AlarmManager.RTC_WAKEUP, timeInMillis, pendingIntent);
                                     }
+                                    checkExistingReminder();
                                     Toast.makeText(getContext(), "Reminder set!", Toast.LENGTH_SHORT).show();
 
                                     if (getActivity() instanceof MainActivity) {
