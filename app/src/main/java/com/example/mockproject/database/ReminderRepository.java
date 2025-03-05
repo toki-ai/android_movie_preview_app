@@ -4,6 +4,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
 
 import com.example.mockproject.entities.Movie;
 import com.example.mockproject.entities.Reminder;
@@ -60,6 +61,23 @@ public class ReminderRepository {
         db.close();
         return rowsDeleted;
     }
+
+    public int deleteReminderByMovieId(int userId, int movieId) {
+        SQLiteDatabase db = databaseHelper.getWritableDatabase();
+
+        Log.d("TAGTAG", "Deleting reminder: userId=" + userId + ", movieId=" + movieId);
+
+        int rowsDeleted = db.delete(DatabaseHelper.ReminderEntry.REMINDER_TABLE_NAME,
+                DatabaseHelper.ReminderEntry.REMINDER_COLUMN_USER_ID + " = ? AND " +
+                        DatabaseHelper.ReminderEntry.REMINDER_COLUMN_MOVIE_ID + " = ?",
+                new String[]{String.valueOf(userId), String.valueOf(movieId)});
+
+        Log.d("TAGTAG", "Rows deleted: " + rowsDeleted);
+
+        db.close();
+        return rowsDeleted;
+    }
+
 
     public List<Reminder> getRemindersByUser(int userId) {
         List<Reminder> reminders = new ArrayList<>();

@@ -160,7 +160,7 @@ public class MovieAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 });
             }
 
-            //movieHolder.itemView.setOnClickListener(v -> onOpenMovieDetailListener.onOpenMovieDetail(movie.getId(), movie.getTitle()));
+            movieHolder.itemView.setOnClickListener(v -> onOpenMovieDetailListener.onOpenMovieDetail(movie.getId(), movie.getTitle()));
         } else {
             LoadingViewHolder loadingHolder = (LoadingViewHolder) holder;
             loadingHolder.progressBar.setIndeterminate(true);

@@ -13,15 +13,19 @@ import static com.example.mockproject.utils.Constants.TYPE_UPCOMING;
 import static com.example.mockproject.utils.Constants.USER_ID;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.DatePickerDialog;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Base64;
@@ -65,6 +69,7 @@ import com.example.mockproject.fragment.ListMoviesFragment;
 import com.example.mockproject.fragment.MovieDetailFragment;
 import com.example.mockproject.fragment.SettingsFragment;
 import com.example.mockproject.adapter.ReminderAdapter;
+import com.example.mockproject.utils.Constants;
 import com.example.mockproject.utils.Utils;
 import com.google.android.material.badge.BadgeDrawable;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -462,6 +467,14 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
     }
 
     private void setUpBottomNavAndVisibleToolbar() {
+        FavoriteFragment favoriteFragment = (FavoriteFragment) getSupportFragmentManager().findFragmentByTag(FRAGMENT_FAVORITE);
+        if (favoriteFragment == null) {
+            favoriteFragment = new FavoriteFragment();
+            getSupportFragmentManager().beginTransaction()
+                    .add(R.id.frame_container, favoriteFragment, FRAGMENT_FAVORITE)
+                    .hide(favoriteFragment)
+                    .commit();
+        }
 
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_nav);
         currentFragment = new ListMoviesFragment();
@@ -577,6 +590,7 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
             List<Reminder> shortList = (allReminders.size() > 3) ? allReminders.subList(0, 3) : allReminders;
             ReminderAdapter reminderAdapter = new ReminderAdapter(this,this, shortList);
             reminderRecycler.setAdapter(reminderAdapter);
+            Log.d("TAGTAG", "HIIII");
         }
     }
 
@@ -688,5 +702,31 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
                 }
             }
         });
+    }
+    private final BroadcastReceiver reminderUpdateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            reloadDrawerReminders();
+        }
+    };
+
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+    @Override
+    protected void onResume() {
+        super.onResume();
+        IntentFilter filter = new IntentFilter(Constants.ACTION_UPDATE_REMINDER_LIST);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(reminderUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(reminderUpdateReceiver, filter);
+        }
+    }
+
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(reminderUpdateReceiver);
     }
 }

@@ -22,4 +22,6 @@ public class Constants {
     public static final String RECEIVER_MOVIE_TITLE = "receiver_movie_title";
     public static final String RECEIVER_MOVIE_RATING = "receiver_movie_rating";
     public static final String RECEIVER_MOVIE_YEAR = "receiver_movie_year";
+
+    public static final String ACTION_UPDATE_REMINDER_LIST = "com.example.mockproject.UPDATE_REMINDER_LIST";
 }

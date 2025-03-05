@@ -246,6 +246,7 @@ public class MovieDetailFragment extends Fragment {
                                     Intent intent = new Intent(getContext(), ReminderReceiver.class);
                                     intent.putExtra(RECEIVER_TIME, timeInMillis);
                                     intent.putExtra(RECEIVER_MOVIE_TITLE, movieTitle);
+                                    intent.putExtra("MOVIE_ID", movieId);
                                     intent.putExtra(RECEIVER_MOVIE_RATING, detailRating.getText().toString());
                                     String releaseDate = detailReleaseDate.getText().toString();
                                     intent.putExtra(RECEIVER_MOVIE_YEAR, releaseDate.length() >= 4 ? releaseDate.substring(0, 4) : "N/A");
