@@ -112,6 +112,13 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         }
     }
 
+    private final BroadcastReceiver reminderUpdateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            reloadDrawerReminders();
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -130,6 +137,8 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
         setUpBottomNavAndVisibleToolbar();
         Intent intent = getIntent();
         handleReminderIntentIfNeeded(intent);
+        IntentFilter filter = new IntentFilter(Constants.ACTION_UPDATE_REMINDER_LIST);
+        registerReceiver(reminderUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
     }
 
     private void setUpDrawer() {
@@ -703,30 +712,10 @@ public class MainActivity extends AppCompatActivity implements OnLoginRequestLis
             }
         });
     }
-    private final BroadcastReceiver reminderUpdateReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            reloadDrawerReminders();
-        }
-    };
-
-    @SuppressLint("UnspecifiedRegisterReceiverFlag")
-    @Override
-    protected void onResume() {
-        super.onResume();
-        IntentFilter filter = new IntentFilter(Constants.ACTION_UPDATE_REMINDER_LIST);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(reminderUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            registerReceiver(reminderUpdateReceiver, filter);
-        }
-    }
-
 
     @Override
-    protected void onPause() {
-        super.onPause();
+    protected void onDestroy() {
         unregisterReceiver(reminderUpdateReceiver);
+        super.onDestroy();
     }
 }
