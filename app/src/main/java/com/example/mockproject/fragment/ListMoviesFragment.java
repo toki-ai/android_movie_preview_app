@@ -202,4 +202,12 @@ public class ListMoviesFragment extends Fragment  {
         super.onDestroy();
         prefs.unregisterOnSharedPreferenceChangeListener(prefListener);
     }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (prefs != null && prefListener != null) {
+            prefs.registerOnSharedPreferenceChangeListener(prefListener);
+        }
+    }
 }
