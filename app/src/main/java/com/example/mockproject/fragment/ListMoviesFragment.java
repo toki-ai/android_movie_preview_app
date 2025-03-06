@@ -34,6 +34,7 @@ import com.example.mockproject.api.MovieApiService;
 import com.example.mockproject.entities.Movie;
 import com.example.mockproject.entities.MovieResponse;
 import com.example.mockproject.adapter.MovieAdapter;
+import com.example.mockproject.utils.Constants;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -166,8 +167,8 @@ public class ListMoviesFragment extends Fragment  {
                             })
                             .collect(Collectors.toList());
 
-                    String sortOption = sharedPreferences.getString(KEY_SORT_OPTION, "Release Date Descending");
-                    if ("Rating Descending".equals(sortOption)) {
+                    String sortOption = sharedPreferences.getString(KEY_SORT_OPTION, Constants.SORT_RELEASE_DATE);
+                    if (Constants.SORT_RATING.equals(sortOption)) {
                         newMovies.sort((m1, m2) -> Float.compare(Float.parseFloat(m2.getRating()), Float.parseFloat(m1.getRating())));
                     } else {
                         newMovies.sort((m1, m2) -> m2.getReleaseDate().compareTo(m1.getReleaseDate()));
