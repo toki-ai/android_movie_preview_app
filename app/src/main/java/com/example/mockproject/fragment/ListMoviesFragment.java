@@ -62,6 +62,7 @@ public class ListMoviesFragment extends Fragment  {
 
         recyclerView = view.findViewById(R.id.recyclerView);
         movieAdapter = new MovieAdapter(new ArrayList<>(), isGrid, getContext(), MovieAdapter.TYPE.LIST);
+        movieAdapter.setCallback(requireContext());
         recyclerView.setAdapter(movieAdapter);
         recyclerView.addItemDecoration(new DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL));
         updateLayoutManager();
@@ -114,6 +115,7 @@ public class ListMoviesFragment extends Fragment  {
         isGrid = !isGrid;
         updateLayoutManager();
         movieAdapter = new MovieAdapter(movieAdapter.getMovies(), isGrid, getContext(), MovieAdapter.TYPE.LIST);
+        movieAdapter.setCallback(requireContext());
         recyclerView.setAdapter(movieAdapter);
     }
 
@@ -124,21 +126,23 @@ public class ListMoviesFragment extends Fragment  {
         SharedPreferences sharedPreferences = requireContext().getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
         String movieType = sharedPreferences.getString(KEY_MOVIE_TYPE, "Popular Movies");
         Call<MovieResponse> call;
+        String category = "";
         switch (movieType) {
             case TYPE_TOP_RATED:
-                call = movieApiService.getTopRatedMovies(API_KEY, page);
+                category = "top_rated";
                 break;
             case TYPE_UPCOMING:
-                call = movieApiService.getUpcomingMovies(API_KEY, page);
+                category = "upcoming";
                 break;
             case TYPE_NOW_PLAYING:
-                call = movieApiService.getNowPlayingMovies(API_KEY, page);
+                category = "now_playing";
                 break;
             case TYPE_POPULAR:
             default:
-                call = movieApiService.getPopularMovies(API_KEY, page);
+                category = "popular";
                 break;
         }
+        call = movieApiService.getMoviesByCategory(category, API_KEY, 1);
 
         call.enqueue(new Callback<>() {
             @Override

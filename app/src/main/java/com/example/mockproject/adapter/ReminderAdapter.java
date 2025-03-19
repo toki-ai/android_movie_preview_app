@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.mockproject.MainActivity;
 import com.example.mockproject.ReminderActivity;
 import com.example.mockproject.R;
+import com.example.mockproject.callback.OnOpenMovieDetailListener;
 import com.example.mockproject.entities.Reminder;
 import com.example.mockproject.receiver.ReminderReceiver;
 import com.squareup.picasso.Picasso;
@@ -30,8 +31,10 @@ public class ReminderAdapter extends RecyclerView.Adapter<ReminderAdapter.Remind
 
     private List<Reminder> reminders;
     private final Context context;
+    private OnOpenMovieDetailListener onOpenMovieDetailListener;
 
-    public ReminderAdapter(Context context, List<Reminder> reminders) {
+    public ReminderAdapter(OnOpenMovieDetailListener onOpenMovieDetailListener, Context context, List<Reminder> reminders) {
+        this.onOpenMovieDetailListener = onOpenMovieDetailListener;
         this.context = context;
         this.reminders = reminders;
     }
@@ -87,11 +90,8 @@ public class ReminderAdapter extends RecyclerView.Adapter<ReminderAdapter.Remind
             });
         }
 
-        holder.itemView.setOnClickListener(v -> {
-            if (context instanceof MainActivity) {
-                ((MainActivity) context).openDetailFragment(reminder.getMovie().getId(), reminder.getMovie().getTitle());
-            }
-        });
+        holder.itemView.setOnClickListener(v -> onOpenMovieDetailListener.onOpenMovieDetail(reminder.getMovie().getId(), reminder.getMovie().getTitle()));
+
     }
 
     @Override

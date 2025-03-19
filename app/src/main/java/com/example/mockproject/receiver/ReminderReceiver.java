@@ -17,11 +17,14 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
 import com.example.mockproject.MainActivity;
 import com.example.mockproject.R;
+import com.example.mockproject.database.ReminderRepository;
+import com.example.mockproject.utils.Constants;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -37,10 +40,13 @@ public class ReminderReceiver extends BroadcastReceiver {
         SharedPreferences prefs = context.getSharedPreferences(SHARE_KEY, Context.MODE_PRIVATE);
         int currentUserId = Integer.parseInt(prefs.getString(USER_ID, "0"));
         int reminderUserId = intent.getIntExtra(RECEIVER_USER_ID, 0);
+
         if (currentUserId != reminderUserId) {
             return;
         }
+
         String movieTitle = intent.getStringExtra(RECEIVER_MOVIE_TITLE);
+        int movieId = intent.getIntExtra("MOVIE_ID", -1);
         long reminderTime = intent.getLongExtra(RECEIVER_TIME, 0);
         String movieRating = intent.getStringExtra(RECEIVER_MOVIE_RATING);
         String movieYear = intent.getStringExtra(RECEIVER_MOVIE_YEAR);
@@ -56,12 +62,17 @@ public class ReminderReceiver extends BroadcastReceiver {
         createNotificationChannel(context);
 
         Intent activityIntent = new Intent(context, MainActivity.class);
+        activityIntent.putExtra("MOVIE_ID", movieId);
+        activityIntent.putExtra("MOVIE_TITLE", movieTitle);
+        activityIntent.putExtra("FROM_REMINDER", true);
+
         PendingIntent contentPendingIntent = PendingIntent.getActivity(
                 context,
-                0,
+                movieId,
                 activityIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
+
         Bitmap largeIcon = BitmapFactory.decodeResource(context.getResources(), R.drawable.img_slash_bg);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
@@ -78,6 +89,12 @@ public class ReminderReceiver extends BroadcastReceiver {
 
         int notificationId = (int) System.currentTimeMillis();
         notificationManager.notify(notificationId, builder.build());
+
+        ReminderRepository reminderRepository = new ReminderRepository(context);
+        reminderRepository.deleteReminderByMovieId(currentUserId, movieId);
+
+        Intent updateUIIntent = new Intent(Constants.ACTION_UPDATE_REMINDER_LIST);
+        context.sendBroadcast(updateUIIntent);
     }
 
     private void createNotificationChannel(Context context) {

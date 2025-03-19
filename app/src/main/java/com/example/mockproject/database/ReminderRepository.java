@@ -4,6 +4,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
 
 import com.example.mockproject.entities.Movie;
 import com.example.mockproject.entities.Reminder;
@@ -61,6 +62,23 @@ public class ReminderRepository {
         return rowsDeleted;
     }
 
+    public int deleteReminderByMovieId(int userId, int movieId) {
+        SQLiteDatabase db = databaseHelper.getWritableDatabase();
+
+        Log.d("TAGTAG", "Deleting reminder: userId=" + userId + ", movieId=" + movieId);
+
+        int rowsDeleted = db.delete(DatabaseHelper.ReminderEntry.REMINDER_TABLE_NAME,
+                DatabaseHelper.ReminderEntry.REMINDER_COLUMN_USER_ID + " = ? AND " +
+                        DatabaseHelper.ReminderEntry.REMINDER_COLUMN_MOVIE_ID + " = ?",
+                new String[]{String.valueOf(userId), String.valueOf(movieId)});
+
+        Log.d("TAGTAG", "Rows deleted: " + rowsDeleted);
+
+        db.close();
+        return rowsDeleted;
+    }
+
+
     public List<Reminder> getRemindersByUser(int userId) {
         List<Reminder> reminders = new ArrayList<>();
         SQLiteDatabase db = databaseHelper.getReadableDatabase();
@@ -94,5 +112,35 @@ public class ReminderRepository {
             System.out.println("REMINDER: " + r.getTime());
         }
         return reminders;
+    }
+
+    public Reminder getReminderForUserAndMovie(int userId, int movieId) {
+        SQLiteDatabase db = databaseHelper.getReadableDatabase();
+        String sql = "SELECT " +
+                DatabaseHelper.ReminderEntry.REMINDER_COLUMN_ID + " AS reminder_id, " +
+                DatabaseHelper.ReminderEntry.REMINDER_COLUMN_TIME + " AS reminder_time, " +
+                DatabaseHelper.ReminderEntry.REMINDER_COLUMN_MOVIE_ID + " AS movie_id, " +
+                DatabaseHelper.ReminderEntry.REMINDER_COLUMN_MOVIE_TITLE + " AS movie_title, " +
+                DatabaseHelper.ReminderEntry.REMINDER_COLUMN_MOVIE_RATING + " AS movie_rating, " +
+                DatabaseHelper.ReminderEntry.REMINDER_COLUMN_MOVIE_IMAGE + " AS movie_image, " +
+                DatabaseHelper.ReminderEntry.REMINDER_COLUMN_MOVIE_YEAR + " AS movie_year " +
+                "FROM " + DatabaseHelper.ReminderEntry.REMINDER_TABLE_NAME + " " +
+                "WHERE " + DatabaseHelper.ReminderEntry.REMINDER_COLUMN_USER_ID + "=? AND " +
+                DatabaseHelper.ReminderEntry.REMINDER_COLUMN_MOVIE_ID + "=?";
+        Cursor cursor = db.rawQuery(sql, new String[]{ String.valueOf(userId), String.valueOf(movieId) });
+        Reminder reminder = null;
+        if (cursor != null && cursor.moveToFirst()) {
+            int reminderId = cursor.getInt(cursor.getColumnIndexOrThrow("reminder_id"));
+            String time = cursor.getString(cursor.getColumnIndexOrThrow("reminder_time"));
+            String title = cursor.getString(cursor.getColumnIndexOrThrow("movie_title"));
+            float rating = cursor.getFloat(cursor.getColumnIndexOrThrow("movie_rating"));
+            String image = cursor.getString(cursor.getColumnIndexOrThrow("movie_image"));
+            String movieYear = cursor.getString(cursor.getColumnIndexOrThrow("movie_year"));
+            Movie movie = new Movie(movieId, title, rating, image, false, movieYear, "");
+            reminder = new Reminder(reminderId, time, movie);
+        }
+        if (cursor != null) cursor.close();
+        db.close();
+        return reminder;
     }
 }
