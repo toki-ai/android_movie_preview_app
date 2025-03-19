@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    tools:context=".fragment.FavoriteFragment">
+
+    <ScrollView
+        android:id="@+id/fav_scroll_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/fav_recyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </ScrollView>
+
+    <TextView
+        android:id="@+id/fav_btn_login"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="100dp"
+        android:text="Login"
+        android:background="@drawable/shape_button"
+        android:textColor="@color/white"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="5dp"
+        app:layout_constraintTop_toTopOf="parent"
+        />
+</androidx.constraintlayout.widget.ConstraintLayout>
